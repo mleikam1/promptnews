@@ -1,0 +1,479 @@
+package com.digitalturbine.promptnews.ui.search
+
+import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
+import com.digitalturbine.promptnews.data.Article
+import com.digitalturbine.promptnews.data.Clip
+import com.digitalturbine.promptnews.data.SearchUi
+import com.digitalturbine.promptnews.web.ArticleWebViewActivity
+import com.digitalturbine.promptnews.web.YahooResultsActivity
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun SearchScreen(vm: SearchViewModel = viewModel()) {
+    val ui by vm.ui.collectAsState()
+    val ctx = LocalContext.current
+
+    var text by remember { mutableStateOf("") }
+    var showTrending by remember { mutableStateOf(true) }
+    var lastQuery by remember { mutableStateOf("") }
+
+    fun openArticle(url: String) {
+        ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", url))
+    }
+    fun openYahoo(q: String) {
+        ctx.startActivity(Intent(ctx, YahooResultsActivity::class.java).putExtra("query", q))
+    }
+
+    LaunchedEffect(ui) {
+        when (ui) {
+            is SearchUi.Searching -> {
+                showTrending = false
+                lastQuery = (ui as SearchUi.Searching).query
+            }
+            is SearchUi.Ready -> lastQuery = (ui as SearchUi.Ready).query
+            else -> {}
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("PROMPTNEWS", fontWeight = FontWeight.ExtraBold) }
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp)
+        ) {
+            item {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Let's go",
+                    style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.ExtraBold)
+                )
+                Spacer(Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    placeholder = { Text("Your next discovery starts here") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = null,
+                            modifier = Modifier.size(0.dp) // visually hidden
+                        )
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                )
+                Spacer(Modifier.height(12.dp))
+
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    Button(
+                        onClick = { if (text.isNotBlank()) vm.runSearch(text) },
+                        shape = RoundedCornerShape(24.dp)
+                    ) { Text("Search") }
+                }
+
+                // Trending chips (fade out on search)
+                AnimatedVisibility(
+                    visible = showTrending && ui is SearchUi.Idle,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Column {
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "Trending search topics",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        val chips = listOf(
+                            "A.I.", "Taylor Swift", "NFL", "Space X",
+                            "Bitcoin", "K-Pop", "NBA trade rumors",
+                            "U.S. election", "Weather radar", "Fortnite"
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            chips.forEach { c ->
+                                AssistChip(
+                                    onClick = { text = c; vm.runSearch(c) },
+                                    label = { Text(c) },
+                                    shape = RoundedCornerShape(22.dp),
+                                    colors = AssistChipDefaults.assistChipColors(
+                                        containerColor = Color(0xFFFFE5E5)
+                                    )
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(16.dp))
+                    }
+                }
+
+                // “Finding …”
+                AnimatedVisibility(
+                    visible = ui is SearchUi.Searching,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Text(
+                        "Finding News and Information for “$lastQuery”",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+            }
+
+            when (val s = ui) {
+                is SearchUi.Ready -> {
+                    // Hero
+                    s.hero?.let { hero ->
+                        item {
+                            HeroCard(hero) { openArticle(hero.url) }
+                            Spacer(Modifier.height(8.dp))
+                        }
+                    }
+                    // list
+                    items(s.rows) { a ->
+                        RowCard(a, onClick = { openArticle(a.url) })
+                        HorizontalDivider(thickness = 0.5.dp)
+                    }
+
+                    // More button
+                    item {
+                        Spacer(Modifier.height(10.dp))
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            OutlinedButton(
+                                onClick = { vm.loadMore() },
+                                enabled = s.hasMore,
+                                shape = RoundedCornerShape(24.dp)
+                            ) { Text(if (s.hasMore) "More" else "No more") }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                    }
+
+                    // Clips rail
+                    if (s.clips.isNotEmpty()) {
+                        item {
+                            Text(
+                                "Clips",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+                        item {
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                items(s.clips) { c -> ClipCard(c) { openArticle(c.url) } }
+                            }
+                            Spacer(Modifier.height(16.dp))
+                        }
+                    }
+
+                    // Images rail
+                    if (s.images.isNotEmpty()) {
+                        item {
+                            Text("Images", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+                        }
+                        item {
+                            Spacer(Modifier.height(8.dp))
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                items(s.images) { u ->
+                                    AsyncImage(
+                                        model = u,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(110.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .clickable { openYahoo("${s.query} images") }
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(18.dp))
+                        }
+                    }
+
+                    // Dive deeper
+                    item {
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text(
+                                "Want to Dive Deeper On this?",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            "People also ask",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    items(s.extras.peopleAlsoAsk) { q ->
+                        ElevatedCard(
+                            onClick = { openYahoo(q) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Row(
+                                Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(q, modifier = Modifier.weight(1f))
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+
+                    // Similar searches chips
+                    if (s.extras.relatedSearches.isNotEmpty()) {
+                        item {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "Similar searches",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+                        item {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                s.extras.relatedSearches.forEach { chip ->
+                                    AssistChip(
+                                        onClick = { openYahoo(chip) },
+                                        label = { Text(chip) },
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = AssistChipDefaults.assistChipColors(
+                                            containerColor = Color(0xFFF0ECF2)
+                                        )
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(16.dp))
+                        }
+                    }
+                }
+                is SearchUi.Error -> item { Text("Error: ${s.message}") }
+                else -> {}
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeroCard(article: Article, onClick: () -> Unit) {
+    ElevatedCard(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Box {
+            AsyncImage(
+                model = article.imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+            )
+            Row(
+                Modifier
+                    .padding(10.dp)
+                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    painter = rememberAsyncImagePainter(article.logoUrl),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clip(CircleShape)
+                )
+                if (!article.ageLabel.isNullOrBlank()) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(article.ageLabel!!, color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+            Text(
+                article.title,
+                color = Color.White,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(12.dp),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(10.dp)
+                    .background(Color(0xFF2563EB), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    article.interest.replaceFirstChar { it.uppercase() },
+                    color = Color.White,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RowCard(a: Article, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = rememberAsyncImagePainter(a.logoUrl),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(CircleShape)
+                )
+                if (!a.sourceName.isNullOrBlank()) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        a.sourceName!!,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                a.title,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            if (!a.ageLabel.isNullOrBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(a.ageLabel!!, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+            }
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(horizontalAlignment = Alignment.End) {
+            AsyncImage(
+                model = a.imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(width = 118.dp, height = 84.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            )
+            Spacer(Modifier.height(6.dp))
+            Box(
+                modifier = Modifier
+                    .background(Color(0xFF2563EB), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    a.interest.replaceFirstChar { it.uppercase() },
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ClipCard(c: Clip, onClick: () -> Unit) {
+    ElevatedCard(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.width(190.dp)
+    ) {
+        Box {
+            AsyncImage(
+                model = c.thumbnail,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(9f / 16f)
+            )
+            Box(
+                modifier = Modifier
+                    .padding(10.dp)
+                    .background(Color.Black.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) { Text("New", color = Color.White, fontWeight = FontWeight.ExtraBold) }
+            Text(
+                c.title,
+                color = Color.White,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(10.dp),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
