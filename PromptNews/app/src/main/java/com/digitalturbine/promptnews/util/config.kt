@@ -1,6 +1,8 @@
 package com.digitalturbine.promptnews.util
 
 import com.digitalturbine.promptnews.BuildConfig
+import com.digitalturbine.promptnews.data.common.RateLimitConfig
+import com.digitalturbine.promptnews.domain.merge.StoryProvider
 
 /**
  * Centralized configuration and API keys.
@@ -35,4 +37,17 @@ object Config {
 
     /** Feature flag: merge SerpAPI YouTube engine results into the Clips rail. */
     const val USE_SERP_FOR_YOUTUBE_BOOST: Boolean = true
+
+    val providerRateLimits: Map<StoryProvider, RateLimitConfig> = mapOf(
+        StoryProvider.SERPAPI to RateLimitConfig(
+            capacity = 60,
+            refillTokens = 60,
+            refillPeriodMs = 60_000L
+        ),
+        StoryProvider.NEWSCATCHER to RateLimitConfig(
+            capacity = 30,
+            refillTokens = 30,
+            refillPeriodMs = 60_000L
+        )
+    )
 }

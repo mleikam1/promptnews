@@ -6,6 +6,7 @@ import com.digitalturbine.promptnews.data.cache.toDomain
 import com.digitalturbine.promptnews.data.cache.toDomainBundle
 import com.digitalturbine.promptnews.data.cache.toCacheSnapshot
 import com.digitalturbine.promptnews.data.common.CacheKeyBuilder
+import com.digitalturbine.promptnews.data.common.RateLimiter
 import com.digitalturbine.promptnews.data.common.UrlCanonicalizer
 import com.digitalturbine.promptnews.domain.merge.MergeableStory
 import com.digitalturbine.promptnews.domain.merge.StoryMergeEngine
@@ -17,6 +18,7 @@ import com.digitalturbine.promptnews.domain.model.PromptResultBundle
 import com.digitalturbine.promptnews.domain.model.RelatedPrompt
 import com.digitalturbine.promptnews.domain.model.RelatedType
 import com.digitalturbine.promptnews.domain.model.UnifiedStory
+import com.digitalturbine.promptnews.util.Config
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -26,6 +28,7 @@ class PromptNewsRepositoryImpl(
     private val cachePolicyEngine: CachePolicyEngine = CachePolicyEngine(),
     private val searchRepository: SearchRepository = SearchRepository(),
     private val storyMergeEngine: StoryMergeEngine = StoryMergeEngine(),
+    private val rateLimiter: RateLimiter = RateLimiter(Config.providerRateLimits),
     private val clockMs: () -> Long = System::currentTimeMillis
 ) : PromptNewsRepository {
 
@@ -71,11 +74,19 @@ class PromptNewsRepositoryImpl(
         cacheKey: String
     ): PromptResultBundle {
         val nowMs = clockMs()
-        val serpApiStories = searchRepository.fetchSerpNewsStories(prompt.text, page = 0, pageSize = 20)
-            .mapIndexed { index, story -> story.toMergeableStory(index) }
+        val serpApiStories = if (rateLimiter.tryAcquire(StoryProvider.SERPAPI)) {
+            searchRepository.fetchSerpNewsStories(prompt.text, page = 0, pageSize = 20)
+                .mapIndexed { index, story -> story.toMergeableStory(index) }
+        } else {
+            emptyList()
+        }
 
         // TODO: Integrate Newscatcher API responses and map them into MergeableStory instances.
-        val newscatcherStories = emptyList<MergeableStory>()
+        val newscatcherStories = if (rateLimiter.tryAcquire(StoryProvider.NEWSCATCHER)) {
+            emptyList<MergeableStory>()
+        } else {
+            emptyList()
+        }
 
         val mergeResult = storyMergeEngine.mergeStories(newscatcherStories, serpApiStories)
         val relatedPrompts = fetchRelatedPrompts(prompt.text)
