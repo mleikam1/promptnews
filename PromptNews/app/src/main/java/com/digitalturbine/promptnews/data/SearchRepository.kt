@@ -2,6 +2,9 @@ package com.digitalturbine.promptnews.data
 
 import android.net.Uri
 import com.digitalturbine.promptnews.data.net.Http   // <-- fixed import
+import com.digitalturbine.promptnews.data.serpapi.SerpApiMapper
+import com.digitalturbine.promptnews.data.serpapi.SerpApiStoryDto
+import com.digitalturbine.promptnews.domain.model.UnifiedStory
 import com.digitalturbine.promptnews.util.Config
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -75,6 +78,8 @@ private fun inferInterest(title: String): String {
 
 class SearchRepository {
 
+    private val serpApiMapper = SerpApiMapper()
+
     // FotoScapes (first-party)
     suspend fun fetchFotoScapes(query: String, limit: Int = 3): List<Article> =
         withContext(Dispatchers.IO) {
@@ -124,76 +129,103 @@ class SearchRepository {
         withContext(Dispatchers.IO) {
             if (Config.serpApiKey.isBlank()) return@withContext emptyList<Article>()
 
-            fun parse(jsonStr: String): List<Article> {
-                val root = JSONObject(jsonStr)
-                val candidates =
-                    root.optJSONArray("news_results")
-                        ?: root.optJSONArray("top_stories")
-                        ?: root.optJSONArray("inline_results")
-                        ?: root.optJSONArray("organic_results")
-                        ?: JSONArray()
-
-                return (0 until candidates.length()).mapNotNull { i ->
-                    val j = candidates.optJSONObject(i) ?: return@mapNotNull null
-                    val title = j.optString("title")
-                    val link  = j.optString("link").ifBlank { j.optString("url") }
-                    val img   = firstHttp(
-                        JSONObject()
-                            .put("original", j.opt("original"))
-                            .put("high_res", j.opt("high_res"))
-                            .put("image", j.opt("image"))
-                            .put("thumbnail", j.opt("thumbnail"))
-                    ).orEmpty()
-                    if (title.isBlank() || link.isBlank() || img.isBlank()) return@mapNotNull null
-
-                    val srcName = when (val s = j.opt("source")) {
-                        is JSONObject -> s.optString("name")
-                        is String -> s
-                        else -> null
-                    } ?: j.optString("news_site").ifBlank { null }
-
-                    val age = j.optString("date").ifBlank { j.optString("date_published") }
-
-                    Article(
-                        title = title,
-                        url = link,
-                        imageUrl = tryUpscaleCdn(img),
-                        logoUrl = favicon(link),
-                        sourceName = srcName,
-                        ageLabel = if (age.isBlank()) null else age,
-                        interest = inferInterest(title),
-                        isFotoscapes = false
-                    )
-                }
+            fetchSerpNewsDtos(query, page, pageSize).mapNotNull { dto ->
+                val unifiedStory = serpApiMapper.toUnifiedStory(dto)
+                unifiedStory.toArticle(
+                    ageLabel = dto.ageLabel,
+                    interest = inferInterest(dto.title)
+                )
             }
-
-            val start = (page * pageSize).toString()
-            val num   = pageSize.toString()
-
-            var out: List<Article> = emptyList()
-
-            Http.client.newCall(Http.req(serpUri(mapOf(
-                "engine" to "google_news", "q" to query, "num" to num, "start" to start
-            )))).execute().use { r ->
-                if (r.isSuccessful) out = parse(r.body?.string().orEmpty())
-            }
-            if (out.isNotEmpty()) return@withContext out
-
-            Http.client.newCall(Http.req(serpUri(mapOf(
-                "engine" to "bing_news", "q" to query, "count" to num, "first" to start, "cc" to "US"
-            )))).execute().use { r ->
-                if (r.isSuccessful) out = parse(r.body?.string().orEmpty())
-            }
-            if (out.isNotEmpty()) return@withContext out
-
-            Http.client.newCall(Http.req(serpUri(mapOf(
-                "engine" to "google", "tbm" to "nws", "q" to query, "num" to num, "start" to start
-            )))).execute().use { r ->
-                if (r.isSuccessful) out = parse(r.body?.string().orEmpty())
-            }
-
-            out
         }
+
+    suspend fun fetchSerpNewsStories(query: String, page: Int, pageSize: Int = 20): List<UnifiedStory> =
+        withContext(Dispatchers.IO) {
+            if (Config.serpApiKey.isBlank()) return@withContext emptyList<UnifiedStory>()
+            fetchSerpNewsDtos(query, page, pageSize).map { dto -> serpApiMapper.toUnifiedStory(dto) }
+        }
+
+    private fun fetchSerpNewsDtos(query: String, page: Int, pageSize: Int): List<SerpApiStoryDto> {
+        fun parse(jsonStr: String): List<SerpApiStoryDto> {
+            val root = JSONObject(jsonStr)
+            val candidates =
+                root.optJSONArray("news_results")
+                    ?: root.optJSONArray("top_stories")
+                    ?: root.optJSONArray("inline_results")
+                    ?: root.optJSONArray("organic_results")
+                    ?: JSONArray()
+
+            return (0 until candidates.length()).mapNotNull { i ->
+                val j = candidates.optJSONObject(i) ?: return@mapNotNull null
+                val title = j.optString("title")
+                val link = j.optString("link").ifBlank { j.optString("url") }
+                val img = firstHttp(
+                    JSONObject()
+                        .put("original", j.opt("original"))
+                        .put("high_res", j.opt("high_res"))
+                        .put("image", j.opt("image"))
+                        .put("thumbnail", j.opt("thumbnail"))
+                ).orEmpty()
+                if (title.isBlank() || link.isBlank() || img.isBlank()) return@mapNotNull null
+
+                val srcName = when (val s = j.opt("source")) {
+                    is JSONObject -> s.optString("name")
+                    is String -> s
+                    else -> null
+                } ?: j.optString("news_site").ifBlank { null }
+
+                val age = j.optString("date").ifBlank { j.optString("date_published") }
+
+                SerpApiStoryDto(
+                    title = title,
+                    url = link,
+                    imageUrl = tryUpscaleCdn(img),
+                    logoUrl = favicon(link),
+                    sourceName = srcName,
+                    ageLabel = if (age.isBlank()) null else age
+                )
+            }
+        }
+
+        val start = (page * pageSize).toString()
+        val num = pageSize.toString()
+
+        var out: List<SerpApiStoryDto> = emptyList()
+
+        Http.client.newCall(Http.req(serpUri(mapOf(
+            "engine" to "google_news", "q" to query, "num" to num, "start" to start
+        )))).execute().use { r ->
+            if (r.isSuccessful) out = parse(r.body?.string().orEmpty())
+        }
+        if (out.isNotEmpty()) return out
+
+        Http.client.newCall(Http.req(serpUri(mapOf(
+            "engine" to "bing_news", "q" to query, "count" to num, "first" to start, "cc" to "US"
+        )))).execute().use { r ->
+            if (r.isSuccessful) out = parse(r.body?.string().orEmpty())
+        }
+        if (out.isNotEmpty()) return out
+
+        Http.client.newCall(Http.req(serpUri(mapOf(
+            "engine" to "google", "tbm" to "nws", "q" to query, "num" to num, "start" to start
+        )))).execute().use { r ->
+            if (r.isSuccessful) out = parse(r.body?.string().orEmpty())
+        }
+
+        return out
+    }
+
+    private fun UnifiedStory.toArticle(ageLabel: String?, interest: String): Article {
+        return Article(
+            title = title,
+            url = url,
+            imageUrl = imageUrl.orEmpty(),
+            logoUrl = publisher?.iconUrl.orEmpty(),
+            sourceName = publisher?.name,
+            ageLabel = ageLabel,
+            interest = interest,
+            isFotoscapes = false
+        )
+    }
 
     // Clips (YouTube first, SerpAPI fallback)
     suspend fun fetchClips(query: String): List<Clip> = withContext(Dispatchers.IO) {

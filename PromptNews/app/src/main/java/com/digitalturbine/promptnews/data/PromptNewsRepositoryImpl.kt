@@ -14,12 +14,11 @@ import com.digitalturbine.promptnews.domain.model.CacheStaleness
 import com.digitalturbine.promptnews.domain.model.Prompt
 import com.digitalturbine.promptnews.domain.model.PromptFilters
 import com.digitalturbine.promptnews.domain.model.PromptResultBundle
-import com.digitalturbine.promptnews.domain.model.Publisher
 import com.digitalturbine.promptnews.domain.model.RelatedPrompt
 import com.digitalturbine.promptnews.domain.model.RelatedType
+import com.digitalturbine.promptnews.domain.model.UnifiedStory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.URI
 import java.time.Instant
 
 class PromptNewsRepositoryImpl(
@@ -72,10 +71,8 @@ class PromptNewsRepositoryImpl(
         cacheKey: String
     ): PromptResultBundle {
         val nowMs = clockMs()
-        val serpApiArticles = searchRepository.fetchSerpNews(prompt.text, page = 0, pageSize = 20)
-        val serpApiStories = serpApiArticles.mapIndexed { index, article ->
-            article.toMergeableStory(index)
-        }
+        val serpApiStories = searchRepository.fetchSerpNewsStories(prompt.text, page = 0, pageSize = 20)
+            .mapIndexed { index, story -> story.toMergeableStory(index) }
 
         // TODO: Integrate Newscatcher API responses and map them into MergeableStory instances.
         val newscatcherStories = emptyList<MergeableStory>()
@@ -129,32 +126,22 @@ class PromptNewsRepositoryImpl(
         database.cachedBundleDao().replaceBundleItems(cacheKey, snapshot.items)
     }
 
-    private fun Article.toMergeableStory(providerRank: Int): MergeableStory {
+    private fun UnifiedStory.toMergeableStory(providerRank: Int): MergeableStory {
         val canonicalUrl = UrlCanonicalizer.canonicalize(url)
         return MergeableStory(
             canonicalUrl = canonicalUrl.ifBlank { url },
             title = title.ifBlank { null },
-            summary = null,
+            summary = summary,
             provider = StoryProvider.SERPAPI,
             providerRank = providerRank,
-            publisher = sourceName?.takeIf { it.isNotBlank() }?.let { source ->
-                Publisher(
-                    name = source,
-                    domain = domainFromUrl(url),
-                    iconUrl = logoUrl.ifBlank { null }
-                )
-            },
-            publishedAt = null,
-            imageUrl = imageUrl.ifBlank { null },
-            sentiment = null,
-            namedEntities = emptyList(),
-            relatedPrompts = emptyList(),
-            tags = emptySet()
+            publisher = publisher,
+            publishedAt = publishedAt,
+            imageUrl = imageUrl,
+            sentiment = sentiment,
+            namedEntities = namedEntities,
+            relatedPrompts = relatedPrompts,
+            tags = tags
         )
-    }
-
-    private fun domainFromUrl(url: String): String? {
-        return runCatching { URI(url).host }.getOrNull()
     }
 
     private fun Prompt.toCacheFilters(): Map<String, String> {
