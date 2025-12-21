@@ -5,7 +5,6 @@ package com.digitalturbine.promptnews.domain.model
  */
 enum class CacheStaleness {
     FRESH,
-    WARM,
-    STALE,
-    EXPIRED
+    SOFT_STALE,
+    HARD_STALE
 }

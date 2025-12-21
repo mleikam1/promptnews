@@ -231,5 +231,13 @@ private fun String.asSortMode(): SortMode =
 private fun String.asRelatedType(): RelatedType =
     RelatedType.values().firstOrNull { it.name == this } ?: RelatedType.SUGGESTION
 
-private fun String.asCacheStaleness(): CacheStaleness =
-    CacheStaleness.values().firstOrNull { it.name == this } ?: CacheStaleness.FRESH
+private fun String.asCacheStaleness(): CacheStaleness {
+    return when (this) {
+        CacheStaleness.FRESH.name -> CacheStaleness.FRESH
+        CacheStaleness.SOFT_STALE.name -> CacheStaleness.SOFT_STALE
+        CacheStaleness.HARD_STALE.name -> CacheStaleness.HARD_STALE
+        "WARM" -> CacheStaleness.SOFT_STALE
+        "STALE", "EXPIRED" -> CacheStaleness.HARD_STALE
+        else -> CacheStaleness.FRESH
+    }
+}
