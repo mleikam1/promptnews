@@ -25,7 +25,6 @@ private val publisherMap = mapOf(
     "cnn" to "https://fotoscapes.com/wp/v1/publisher/J1fk1aID?ckey=fb529d256155b9c6",
     "the verge" to "https://fotoscapes.com/wp/v1/publisher/PYfQrtX?ckey=fb529d256155b9c6",
     "nbc news" to "https://fotoscapes.com/wp/v1/publisher/6JfVerhL?ckey=fb529d256155b9c6",
-    "yahoo" to "https://fotoscapes.com/wp/v1/publisher/GvfQeGCE?ckey=fb529d256155b9c6",
 )
 
 fun fotoscapesEndpointForQuery(query: String): FotoscapesRoute? {

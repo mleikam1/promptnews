@@ -4,6 +4,7 @@ import android.Manifest
 import android.location.Geocoder
 import android.location.Location
 import android.location.LocationManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,6 +29,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.digitalturbine.promptnews.ui.home.HomeScreen
 import com.digitalturbine.promptnews.ui.search.SearchScreen
 import com.digitalturbine.promptnews.util.HomePrefs
@@ -65,7 +67,7 @@ class MainActivity : ComponentActivity() {
                             val currentDestination = navBackStackEntry?.destination
                             items.forEach { dest ->
                                 NavigationBarItem(
-                                    selected = currentDestination?.route == dest.route,
+                                    selected = currentDestination?.route?.startsWith(dest.route) == true,
                                     onClick = {
                                         navController.navigate(dest.route) {
                                             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -85,8 +87,21 @@ class MainActivity : ComponentActivity() {
                         startDestination = Dest.Search.route,
                         modifier = Modifier.padding(pad)
                     ) {
-                        composable(Dest.Search.route) { SearchScreen() }
-                        composable(Dest.Home.route) { HomeScreen() }
+                        composable(
+                            route = "${Dest.Search.route}?query={query}",
+                            arguments = listOf(navArgument("query") { defaultValue = "" })
+                        ) { backStackEntry ->
+                            SearchScreen(initialQuery = backStackEntry.arguments?.getString("query"))
+                        }
+                        composable(Dest.Home.route) {
+                            HomeScreen { query ->
+                                navController.navigate("${Dest.Search.route}?query=${Uri.encode(query)}") {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        }
                         composable(Dest.Following.route) { FollowingScreen() }
                     }
                 }
