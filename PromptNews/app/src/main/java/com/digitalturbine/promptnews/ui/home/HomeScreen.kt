@@ -32,6 +32,7 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -63,6 +64,7 @@ import com.digitalturbine.promptnews.network.Services
 import com.digitalturbine.promptnews.util.HomePrefs
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @Composable
 fun HomeScreen(onSearch: (String) -> Unit) {
@@ -107,6 +109,7 @@ fun HomeScreen(onSearch: (String) -> Unit) {
     val heroLocal = local.firstOrNull()
     val listLocal = local.drop(1).take(6)
 
+    val defaultBadge = "News"
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -133,14 +136,25 @@ fun HomeScreen(onSearch: (String) -> Unit) {
         if (heroTop != null) {
             item { SectionTitle("Top Stories") }
             item {
+                val badgeLabel = heroTop.interest
+                    .takeIf { it.isNotBlank() }
+                    ?.replaceFirstChar { it.uppercase() }
+                    ?: defaultBadge
                 HeroCard(
                     article = heroTop,
-                    badgeLabel = heroTop.interest.replaceFirstChar { it.uppercase() }
+                    badgeLabel = badgeLabel,
+                    badgeColor = badgeColorFor(badgeLabel)
                 ) { openArticle(ctx, heroTop.url) }
             }
         }
-        itemsIndexed(listTop, key = { index, art -> "${art.url}-$index" }) { _, art ->
-            NewsRowCard(art, badgeLabel = "News", onClick = { openArticle(ctx, art.url) })
+        itemsIndexed(listTop, key = { index, art -> "${art.url}-$index" }) { index, art ->
+            NewsRowCard(
+                article = art,
+                badgeLabel = defaultBadge,
+                badgeColor = badgeColorFor(defaultBadge),
+                showDivider = index != listTop.lastIndex,
+                onClick = { openArticle(ctx, art.url) }
+            )
         }
 
         if (location.isNotBlank() && heroLocal != null) {
@@ -149,12 +163,19 @@ fun HomeScreen(onSearch: (String) -> Unit) {
             item {
                 HeroCard(
                     article = heroLocal,
-                    badgeLabel = "News"
+                    badgeLabel = defaultBadge,
+                    badgeColor = badgeColorFor(defaultBadge)
                 ) { openArticle(ctx, heroLocal.url) }
             }
         }
-        itemsIndexed(listLocal, key = { index, art -> "${art.url}-$index" }) { _, art ->
-            NewsRowCard(art, badgeLabel = "News", onClick = { openArticle(ctx, art.url) })
+        itemsIndexed(listLocal, key = { index, art -> "${art.url}-$index" }) { index, art ->
+            NewsRowCard(
+                article = art,
+                badgeLabel = defaultBadge,
+                badgeColor = badgeColorFor(defaultBadge),
+                showDivider = index != listLocal.lastIndex,
+                onClick = { openArticle(ctx, art.url) }
+            )
         }
 
         item { Spacer(Modifier.height(24.dp)) }
@@ -166,7 +187,7 @@ private fun TrendingChipsRow(
     topics: List<String>,
     onTopicClick: (String) -> Unit
 ) {
-    val chipBlue = Color(0xFF1E88E5)
+    val chipRed = Color(0xFFE53935)
     Column(
         Modifier
             .fillMaxWidth()
@@ -187,7 +208,7 @@ private fun TrendingChipsRow(
                     label = { Text(t) },
                     shape = RoundedCornerShape(24.dp),
                     colors = AssistChipDefaults.assistChipColors(
-                        containerColor = chipBlue,
+                        containerColor = chipRed,
                         labelColor = Color.White
                     )
                 )
@@ -243,6 +264,7 @@ private fun SectionTitle(title: String) {
 private fun HeroCard(
     article: Article,
     badgeLabel: String,
+    badgeColor: Color,
     onClick: () -> Unit
 ) {
     Card(
@@ -279,10 +301,11 @@ private fun HeroCard(
                             .clip(CircleShape)
                     )
                 }
-                if (!article.sourceName.isNullOrBlank()) {
+                val sourceName = article.sourceName
+                if (!sourceName.isNullOrBlank()) {
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = article.sourceName!!,
+                        text = sourceName,
                         color = Color.White,
                         style = MaterialTheme.typography.labelMedium,
                         maxLines = 1,
@@ -292,6 +315,7 @@ private fun HeroCard(
             }
             CategoryBadge(
                 label = badgeLabel,
+                containerColor = badgeColor,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(12.dp)
@@ -315,66 +339,81 @@ private fun HeroCard(
 private fun NewsRowCard(
     article: Article,
     badgeLabel: String,
+    badgeColor: Color,
+    showDivider: Boolean,
     onClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (article.logoUrl.isNotBlank()) {
-                    Image(
-                        painter = rememberAsyncImagePainter(article.logoUrl),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clip(CircleShape)
-                    )
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (article.logoUrl.isNotBlank()) {
+                        Image(
+                            painter = rememberAsyncImagePainter(article.logoUrl),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clip(CircleShape)
+                        )
+                    }
+                    val sourceName = article.sourceName
+                    if (!sourceName.isNullOrBlank()) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = sourceName,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
-                if (!article.sourceName.isNullOrBlank()) {
-                    Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = article.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+                val ageLabel = article.ageLabel
+                if (!ageLabel.isNullOrBlank()) {
+                    Spacer(Modifier.height(6.dp))
                     Text(
-                        text = article.sourceName!!,
+                        text = ageLabel,
                         style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = article.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (!article.ageLabel.isNullOrBlank()) {
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = article.ageLabel!!,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            Spacer(Modifier.width(12.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                AsyncImage(
+                    model = article.imageUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(width = 92.dp, height = 76.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                )
+                Spacer(Modifier.height(8.dp))
+                CategoryBadge(
+                    label = badgeLabel,
+                    containerColor = badgeColor
                 )
             }
         }
-        Spacer(Modifier.width(12.dp))
-        Column(horizontalAlignment = Alignment.End) {
-            AsyncImage(
-                model = article.imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(width = 92.dp, height = 76.dp)
-                    .clip(RoundedCornerShape(12.dp))
+        if (showDivider) {
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
             )
-            Spacer(Modifier.height(8.dp))
-            CategoryBadge(label = badgeLabel)
         }
     }
 }
@@ -383,10 +422,11 @@ private fun NewsRowCard(
 private fun CategoryBadge(
     label: String,
     modifier: Modifier = Modifier,
-    fontSize: TextUnit = MaterialTheme.typography.labelMedium.fontSize
+    fontSize: TextUnit = MaterialTheme.typography.labelMedium.fontSize,
+    containerColor: Color = Color(0xFF1E88E5)
 ) {
     Surface(
-        color = Color(0xFF1E88E5),
+        color = containerColor,
         shape = RoundedCornerShape(14.dp),
         modifier = modifier
     ) {
@@ -399,6 +439,20 @@ private fun CategoryBadge(
     }
 }
 
+private fun badgeColorFor(label: String): Color {
+    return when (label.lowercase(Locale.US)) {
+        "entertainment" -> Color(0xFF8E24AA)
+        "sports" -> Color(0xFFD32F2F)
+        "technology" -> Color(0xFF00897B)
+        "business" -> Color(0xFF6D4C41)
+        "politics" -> Color(0xFF5E35B1)
+        "science" -> Color(0xFF3949AB)
+        "health" -> Color(0xFF2E7D32)
+        else -> Color(0xFF1E88E5)
+    }
+}
+
 private fun openArticle(ctx: android.content.Context, url: String) {
+    if (url.isBlank()) return
     ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", url))
 }
