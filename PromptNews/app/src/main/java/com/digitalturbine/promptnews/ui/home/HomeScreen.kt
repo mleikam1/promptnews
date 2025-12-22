@@ -43,16 +43,34 @@ import kotlinx.coroutines.launch
 fun HomeScreen() {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
+    val prefs = remember { HomePrefs.getPrefs(ctx) }
 
     var top by remember { mutableStateOf<List<Article>>(emptyList()) }
     var local by remember { mutableStateOf<List<Article>>(emptyList()) }
     var showAllLocal by remember { mutableStateOf(false) }
-    val location = remember { HomePrefs.getLocation(ctx) }
+    var location by remember { mutableStateOf(HomePrefs.getLocation(ctx)) }
+
+    DisposableEffect(prefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == HomePrefs.KEY_LOCATION) {
+                location = HomePrefs.getLocation(ctx)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
 
     // Load feeds
     LaunchedEffect(Unit) {
         scope.launch { top = GoogleNewsRepository.topStories() }
-        scope.launch { local = GoogleNewsRepository.localNews(location) }
+    }
+
+    LaunchedEffect(location) {
+        if (location.isNotBlank()) {
+            scope.launch { local = GoogleNewsRepository.localNews(location) }
+        } else {
+            local = emptyList()
+        }
     }
 
     val heroTop = top.firstOrNull()
