@@ -8,8 +8,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -28,7 +32,19 @@ class ArticleWebViewActivity : ComponentActivity() {
         setContent {
             var progress by remember { mutableFloatStateOf(0f) }
             Scaffold(
-                topBar = { CenterAlignedTopAppBar(title = { Text("Article") }) }
+                topBar = {
+                    CenterAlignedTopAppBar(
+                        title = { Text("PromptNews") },
+                        navigationIcon = {
+                            IconButton(onClick = { onBackPressedDispatcher.onBackPressed() }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back"
+                                )
+                            }
+                        }
+                    )
+                }
             ) { pad ->
                 Column(Modifier.padding(pad)) {
                     if (progress in 0f..0.99f) LinearProgressIndicator(progress = progress)
