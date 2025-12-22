@@ -29,10 +29,14 @@ class SearchViewModel(
 
         viewModelScope.launch {
             runCatching {
-                val fs = repo.fetchFotoScapes(q, limit = 3)
                 val serp = repo.fetchSerpNews(q, page = 0, pageSize = 20)
+                val fs = if (serp.isEmpty()) {
+                    repo.fetchFotoScapes(q, limit = 3)
+                } else {
+                    emptyList()
+                }
 
-                val list = (fs + serp).distinctBy { it.url }
+                val list = (serp + fs).distinctBy { it.url }
                 val hero = list.firstOrNull()
                 val rows = list.drop(1).take(4)
 

@@ -54,7 +54,6 @@ class YoutubeRss(private val http: OkHttpClient) {
                 // Try deriving a thumbnail from videoId; fallback to media:thumbnail if present
                 val derivedThumb = videoId?.let { "https://i.ytimg.com/vi/$it/hqdefault.jpg" }
                 val mediaThumb = entry.firstAttr("media:thumbnail", "url")
-                    ?: entry.firstAttrNS(MRSS_NS, "thumbnail", "url")
 
                 val thumbnail = (derivedThumb ?: mediaThumb) ?: ""
 
@@ -76,7 +75,6 @@ class YoutubeRss(private val http: OkHttpClient) {
         const val ATOM_NS = "http://www.w3.org/2005/Atom"
         const val YT_NS = "http://www.youtube.com/xml/schemas/2015"
         const val GDATA_NS = "http://gdata.youtube.com/schemas/2007"
-        const val MRSS_NS = "http://search.yahoo.com/mrss/"
     }
 }
 
@@ -106,6 +104,3 @@ private fun Element.firstTextNS(ns: String, local: String): String? =
 
 private fun Element.firstAttr(tag: String, attr: String): String? =
     firstElement(tag)?.getAttribute(attr)?.takeIf { it.isNotBlank() }
-
-private fun Element.firstAttrNS(ns: String, local: String, attr: String): String? =
-    firstElementNS(ns, local)?.getAttribute(attr)?.takeIf { it.isNotBlank() }

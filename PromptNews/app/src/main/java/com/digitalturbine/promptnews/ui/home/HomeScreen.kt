@@ -1,6 +1,5 @@
 package com.digitalturbine.promptnews.ui.home
 
-import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -36,11 +35,10 @@ import com.digitalturbine.promptnews.data.rss.GoogleNewsRepository
 import com.digitalturbine.promptnews.util.HomePrefs
 import com.digitalturbine.promptnews.util.ageLabelFrom
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
-import com.digitalturbine.promptnews.web.YahooResultsActivity
 import kotlinx.coroutines.launch
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(onSearch: (String) -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val prefs = remember { HomePrefs.getPrefs(ctx) }
@@ -94,9 +92,7 @@ fun HomeScreen() {
                     "U.S. election", "Weather radar", "Fortnite"
                 ),
                 onTopicClick = { q ->
-                    ctx.startActivity(
-                        Intent(ctx, YahooResultsActivity::class.java).putExtra("query", q)
-                    )
+                    onSearch(q)
                 }
             )
         }
@@ -104,11 +100,7 @@ fun HomeScreen() {
         // Search header
         item {
             Surface(tonalElevation = 4.dp) {
-                SearchHeader { q ->
-                    ctx.startActivity(
-                        Intent(ctx, YahooResultsActivity::class.java).putExtra("query", q)
-                    )
-                }
+                SearchHeader { q -> onSearch(q) }
             }
         }
 

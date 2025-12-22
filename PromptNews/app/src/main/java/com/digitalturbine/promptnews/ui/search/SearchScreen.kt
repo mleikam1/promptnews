@@ -39,12 +39,14 @@ import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.Clip
 import com.digitalturbine.promptnews.data.SearchUi
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
-import com.digitalturbine.promptnews.web.YahooResultsActivity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun SearchScreen(vm: SearchViewModel = viewModel()) {
+fun SearchScreen(
+    initialQuery: String? = null,
+    vm: SearchViewModel = viewModel()
+) {
     val ui by vm.ui.collectAsState()
     val ctx = LocalContext.current
 
@@ -54,10 +56,11 @@ fun SearchScreen(vm: SearchViewModel = viewModel()) {
     fun openArticle(url: String) {
         ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", url))
     }
-    fun openYahoo(q: String) {
+    fun runSearch(q: String) {
         val trimmed = q.trim()
         if (trimmed.isBlank()) return
-        ctx.startActivity(Intent(ctx, YahooResultsActivity::class.java).putExtra("query", trimmed))
+        text = trimmed
+        vm.runSearch(trimmed)
     }
 
     LaunchedEffect(ui) {
@@ -67,6 +70,13 @@ fun SearchScreen(vm: SearchViewModel = viewModel()) {
             }
             is SearchUi.Ready -> lastQuery = (ui as SearchUi.Ready).query
             else -> {}
+        }
+    }
+
+    LaunchedEffect(initialQuery) {
+        val trimmed = initialQuery?.trim().orEmpty()
+        if (trimmed.isNotBlank() && trimmed != lastQuery) {
+            runSearch(trimmed)
         }
     }
 
@@ -94,8 +104,7 @@ fun SearchScreen(vm: SearchViewModel = viewModel()) {
                     trailingIcon = {
                         IconButton(
                             onClick = {
-                                val query = text.trim()
-                                if (query.isNotBlank()) vm.runSearch(query)
+                                runSearch(text)
                             }
                         ) {
                             Icon(
@@ -109,8 +118,7 @@ fun SearchScreen(vm: SearchViewModel = viewModel()) {
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(
                         onSearch = {
-                            val query = text.trim()
-                            if (query.isNotBlank()) vm.runSearch(query)
+                            runSearch(text)
                         }
                     ),
                     modifier = Modifier
@@ -250,7 +258,7 @@ fun SearchScreen(vm: SearchViewModel = viewModel()) {
                                         modifier = Modifier
                                             .size(110.dp)
                                             .clip(RoundedCornerShape(12.dp))
-                                            .clickable { openYahoo("${s.query} images") }
+                                            .clickable { openArticle(u) }
                                     )
                                 }
                             }
@@ -277,7 +285,7 @@ fun SearchScreen(vm: SearchViewModel = viewModel()) {
                     }
                     items(s.extras.peopleAlsoAsk) { q ->
                         ElevatedCard(
-                            onClick = { openYahoo(q) },
+                            onClick = { runSearch(q) },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp)
                         ) {
@@ -313,7 +321,7 @@ fun SearchScreen(vm: SearchViewModel = viewModel()) {
                             ) {
                                 s.extras.relatedSearches.forEach { chip ->
                                     AssistChip(
-                                        onClick = { openYahoo(chip) },
+                                        onClick = { runSearch(chip) },
                                         label = { Text(chip) },
                                         shape = RoundedCornerShape(16.dp),
                                         colors = AssistChipDefaults.assistChipColors(
