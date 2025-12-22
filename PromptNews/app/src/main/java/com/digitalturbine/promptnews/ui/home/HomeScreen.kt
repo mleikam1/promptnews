@@ -1,60 +1,77 @@
 package com.digitalturbine.promptnews.ui.home
 
 import android.content.Intent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.Color
 import coil.compose.AsyncImage
-import com.digitalturbine.promptnews.data.rss.Article
-import com.digitalturbine.promptnews.data.rss.GoogleNewsRepository
+import coil.compose.rememberAsyncImagePainter
+import com.digitalturbine.promptnews.data.Article
+import com.digitalturbine.promptnews.network.Services
 import com.digitalturbine.promptnews.util.HomePrefs
-import com.digitalturbine.promptnews.util.ageLabelFrom
-import com.digitalturbine.promptnews.util.toEpochMillisCompat
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(onSearch: (String) -> Unit) {
-    val ctx = LocalContext.current
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val prefs = remember { HomePrefs.getPrefs(ctx) }
 
     var top by remember { mutableStateOf<List<Article>>(emptyList()) }
     var local by remember { mutableStateOf<List<Article>>(emptyList()) }
-    var showAllLocal by remember { mutableStateOf(false) }
     var location by remember { mutableStateOf(HomePrefs.getLocation(ctx)) }
 
     DisposableEffect(prefs) {
@@ -67,14 +84,18 @@ fun HomeScreen(onSearch: (String) -> Unit) {
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
-    // Load feeds
     LaunchedEffect(Unit) {
-        scope.launch { top = GoogleNewsRepository.topStories() }
+        scope.launch {
+            top = runCatching { Services.fetchFsArticles("top news", limit = 5) }.getOrDefault(emptyList())
+        }
     }
 
     LaunchedEffect(location) {
         if (location.isNotBlank()) {
-            scope.launch { local = GoogleNewsRepository.localNews(location) }
+            val query = "$location news"
+            scope.launch {
+                local = runCatching { Services.fetchSerpNews(query, page = 0, pageSize = 8) }.getOrDefault(emptyList())
+            }
         } else {
             local = emptyList()
         }
@@ -84,7 +105,7 @@ fun HomeScreen(onSearch: (String) -> Unit) {
     val listTop = top.drop(1).take(4)
 
     val heroLocal = local.firstOrNull()
-    val listLocal = local.drop(1).let { if (showAllLocal) it else it.take(4) }
+    val listLocal = local.drop(1).take(6)
 
     LazyColumn(
         modifier = Modifier
@@ -92,7 +113,6 @@ fun HomeScreen(onSearch: (String) -> Unit) {
             .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(bottom = 88.dp)
     ) {
-        // Trending topics row
         item {
             TrendingChipsRow(
                 topics = listOf(
@@ -100,42 +120,41 @@ fun HomeScreen(onSearch: (String) -> Unit) {
                     "Bitcoin", "K-Pop", "NBA trade rumors",
                     "U.S. election", "Weather radar", "Fortnite"
                 ),
-                onTopicClick = { q ->
-                    onSearch(q)
-                }
+                onTopicClick = { q -> onSearch(q) }
             )
         }
 
-        // Search header
         item {
             Surface(tonalElevation = 4.dp) {
                 SearchHeader { q -> onSearch(q) }
             }
         }
 
-        // Top Stories
         if (heroTop != null) {
             item { SectionTitle("Top Stories") }
-            item { HeroCard(heroTop) { openArticle(ctx, it) } }
+            item {
+                HeroCard(
+                    article = heroTop,
+                    badgeLabel = heroTop.interest.replaceFirstChar { it.uppercase() }
+                ) { openArticle(ctx, heroTop.url) }
+            }
         }
-        itemsIndexed(listTop, key = { index, art -> "${art.link}-$index" }) { _, art ->
-            SmallArticleRow(art, onClick = { openArticle(ctx, art.link) })
+        itemsIndexed(listTop, key = { index, art -> "${art.url}-$index" }) { _, art ->
+            NewsRowCard(art, badgeLabel = "News", onClick = { openArticle(ctx, art.url) })
         }
 
-        // Local News
-        if (heroLocal != null) {
+        if (location.isNotBlank() && heroLocal != null) {
             item { Spacer(Modifier.height(16.dp)) }
             item { SectionTitle("Local News • $location") }
-            item { HeroCard(heroLocal) { openArticle(ctx, it) } }
-        }
-        itemsIndexed(listLocal, key = { index, art -> "${art.link}-$index" }) { _, art ->
-            SmallArticleRow(art, onClick = { openArticle(ctx, art.link) })
-        }
-
-        if (!showAllLocal && local.size > 5) {
             item {
-                MoreButton(onClick = { showAllLocal = true })
+                HeroCard(
+                    article = heroLocal,
+                    badgeLabel = "News"
+                ) { openArticle(ctx, heroLocal.url) }
             }
+        }
+        itemsIndexed(listLocal, key = { index, art -> "${art.url}-$index" }) { _, art ->
+            NewsRowCard(art, badgeLabel = "News", onClick = { openArticle(ctx, art.url) })
         }
 
         item { Spacer(Modifier.height(24.dp)) }
@@ -148,7 +167,11 @@ private fun TrendingChipsRow(
     onTopicClick: (String) -> Unit
 ) {
     val chipBlue = Color(0xFF1E88E5)
-    Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp)
+    ) {
         Text(
             text = "Trending search topics",
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
@@ -217,63 +240,83 @@ private fun SectionTitle(title: String) {
 }
 
 @Composable
-private fun HeroCard(article: Article, onClickLink: (String) -> Unit) {
+private fun HeroCard(
+    article: Article,
+    badgeLabel: String,
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .clickable { onClickLink(article.link) },
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column {
-            if (!article.imageUrl.isNullOrBlank()) {
-                Box {
-                    AsyncImage(
-                        model = article.imageUrl,
-                        contentDescription = article.title,
+        Box {
+            AsyncImage(
+                model = article.imageUrl,
+                contentDescription = article.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+            )
+            Row(
+                Modifier
+                    .align(Alignment.TopStart)
+                    .padding(12.dp)
+                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (article.logoUrl.isNotBlank()) {
+                    Image(
+                        painter = rememberAsyncImagePainter(article.logoUrl),
+                        contentDescription = null,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                    )
-                    CategoryBadge(
-                        label = "News",
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(12.dp)
+                            .size(18.dp)
+                            .clip(CircleShape)
                     )
                 }
-            }
-            Column(Modifier.padding(16.dp)) {
-                val age = remember(article.published) {
-                    article.published?.toEpochMillisCompat()?.let { ageLabelFrom(it) }
-                }
-                if (!age.isNullOrBlank()) {
+                if (!article.sourceName.isNullOrBlank()) {
+                    Spacer(Modifier.width(6.dp))
                     Text(
-                        text = age,
+                        text = article.sourceName!!,
+                        color = Color.White,
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = article.title,
-                    // ✅ fixed typo here
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
+            CategoryBadge(
+                label = badgeLabel,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(12.dp)
+            )
+            Text(
+                text = article.title,
+                color = Color.White,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(14.dp),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
     Spacer(Modifier.height(8.dp))
 }
 
 @Composable
-private fun SmallArticleRow(article: Article, onClick: () -> Unit) {
-    val age = remember(article.published) {
-        article.published?.toEpochMillisCompat()?.let { ageLabelFrom(it) }
-    }
+private fun NewsRowCard(
+    article: Article,
+    badgeLabel: String,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -282,21 +325,39 @@ private fun SmallArticleRow(article: Article, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text(
-                text = article.source.takeIf { it.isNotBlank() } ?: "News",
-                style = MaterialTheme.typography.labelLarge
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (article.logoUrl.isNotBlank()) {
+                    Image(
+                        painter = rememberAsyncImagePainter(article.logoUrl),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clip(CircleShape)
+                    )
+                }
+                if (!article.sourceName.isNullOrBlank()) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = article.sourceName!!,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
             Spacer(Modifier.height(6.dp))
             Text(
                 text = article.title,
                 style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
+                fontWeight = FontWeight.Bold,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
-            if (!age.isNullOrBlank()) {
+            if (!article.ageLabel.isNullOrBlank()) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = age,
+                    text = article.ageLabel!!,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -307,12 +368,13 @@ private fun SmallArticleRow(article: Article, onClick: () -> Unit) {
             AsyncImage(
                 model = article.imageUrl,
                 contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(width = 92.dp, height = 76.dp)
                     .clip(RoundedCornerShape(12.dp))
             )
             Spacer(Modifier.height(8.dp))
-            CategoryBadge(label = "News")
+            CategoryBadge(label = badgeLabel)
         }
     }
 }
@@ -334,24 +396,6 @@ private fun CategoryBadge(
             style = TextStyle(fontSize = fontSize, fontWeight = FontWeight.SemiBold),
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
         )
-    }
-}
-
-@Composable
-private fun MoreButton(
-    onClick: () -> Unit,
-    text: String = "More local news"
-) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 20.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
-        Spacer(Modifier.width(8.dp))
-        Text(text)
     }
 }
 
