@@ -9,14 +9,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +28,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -45,7 +49,6 @@ fun SearchScreen(vm: SearchViewModel = viewModel()) {
     val ctx = LocalContext.current
 
     var text by remember { mutableStateOf("") }
-    var showTrending by remember { mutableStateOf(true) }
     var lastQuery by remember { mutableStateOf("") }
 
     fun openArticle(url: String) {
@@ -58,7 +61,6 @@ fun SearchScreen(vm: SearchViewModel = viewModel()) {
     LaunchedEffect(ui) {
         when (ui) {
             is SearchUi.Searching -> {
-                showTrending = false
                 lastQuery = (ui as SearchUi.Searching).query
             }
             is SearchUi.Ready -> lastQuery = (ui as SearchUi.Ready).query
@@ -66,13 +68,7 @@ fun SearchScreen(vm: SearchViewModel = viewModel()) {
         }
     }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("PROMPTNEWS", fontWeight = FontWeight.ExtraBold) }
-            )
-        }
-    ) { padding ->
+    Scaffold { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -80,57 +76,74 @@ fun SearchScreen(vm: SearchViewModel = viewModel()) {
                 .padding(horizontal = 16.dp)
         ) {
             item {
-                Spacer(Modifier.height(8.dp))
                 Text(
-                    "Let's go",
-                    style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.ExtraBold)
+                    "News that follows your interests.",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(20.dp))
 
-                OutlinedTextField(
+                TextField(
                     value = text,
                     onValueChange = { text = it },
                     placeholder = { Text("Your next discovery starts here") },
-                    leadingIcon = {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = null,
-                            modifier = Modifier.size(0.dp) // visually hidden
-                        )
+                    trailingIcon = {
+                        IconButton(
+                            onClick = { if (text.isNotBlank()) vm.runSearch(text) }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Search,
+                                contentDescription = "Search"
+                            )
+                        }
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(
+                        onSearch = { if (text.isNotBlank()) vm.runSearch(text) }
+                    ),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp),
+                        .fillMaxWidth(),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
-                Spacer(Modifier.height(12.dp))
-
-                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                    Button(
-                        onClick = { if (text.isNotBlank()) vm.runSearch(text) },
-                        shape = RoundedCornerShape(24.dp)
-                    ) { Text("Search") }
-                }
+                Spacer(Modifier.height(16.dp))
 
                 // Trending chips (fade out on search)
                 AnimatedVisibility(
-                    visible = showTrending && ui is SearchUi.Idle,
+                    visible = ui is SearchUi.Idle,
                     enter = fadeIn(),
                     exit = fadeOut()
                 ) {
                     Column {
-                        Spacer(Modifier.height(16.dp))
-                        Text(
-                            "Trending search topics",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                        Spacer(Modifier.height(8.dp))
                         val chips = listOf(
-                            "A.I.", "Taylor Swift", "NFL", "Space X",
-                            "Bitcoin", "K-Pop", "NBA trade rumors",
-                            "U.S. election", "Weather radar", "Fortnite"
+                            "Taylor Swift",
+                            "A.I.",
+                            "VMAs",
+                            "Space X",
+                            "NFL",
+                            "Bitcoin",
+                            "iPhone Air",
+                            "iPhone 17",
+                            "Avengers: Doomsday",
+                            "Superman",
+                            "DCU",
+                            "Beyonce",
+                            "Weather Radar",
+                            "K-Pop Demon Hunters",
+                            "Fortnite",
+                            "U.S. Open"
                         )
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -142,7 +155,8 @@ fun SearchScreen(vm: SearchViewModel = viewModel()) {
                                     label = { Text(c) },
                                     shape = RoundedCornerShape(22.dp),
                                     colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = Color(0xFFFFE5E5)
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        labelColor = MaterialTheme.colorScheme.onPrimary
                                     )
                                 )
                             }
