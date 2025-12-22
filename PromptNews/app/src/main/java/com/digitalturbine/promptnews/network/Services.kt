@@ -9,6 +9,7 @@ import com.digitalturbine.promptnews.data.rss.parseGoogleNewsRss
 import com.digitalturbine.promptnews.util.ageLabelFrom
 import com.digitalturbine.promptnews.util.faviconFrom
 import com.digitalturbine.promptnews.util.inferInterestFromTitle
+import com.digitalturbine.promptnews.util.toEpochMillisCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
@@ -57,7 +58,7 @@ object Services {
 
                 val out = mutableListOf<Article>()
                 for (it in rssItems) {
-                    val age = it.published?.toEpochMilli()?.let { ms -> ageLabelFrom(ms) }
+                    val age = it.published?.toEpochMillisCompat()?.let { ms -> ageLabelFrom(ms) }
                     out += Article(
                         title = it.title,
                         url = it.link,
