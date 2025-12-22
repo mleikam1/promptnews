@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
                 // is still empty. Track readiness so we never navigate until nodes exist.
                 LaunchedEffect(navController) {
                     snapshotFlow { navController.graph }
-                        .map { graph -> graph.nodes.isNotEmpty() && graph.startDestinationId != 0 }
+                        .map { graph -> graph.nodes.size() > 0 && graph.startDestinationId != 0 }
                         .distinctUntilChanged()
                         .collect { isGraphReady = it }
                 }
@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
                                     enabled = isGraphReady,
                                     onClick = {
                                         val graph = navController.graph
-                                        if (!isGraphReady || graph.nodes.isEmpty() || graph.startDestinationId == 0) {
+                                        if (!isGraphReady || graph.nodes.size() == 0 || graph.startDestinationId == 0) {
                                             return@NavigationBarItem
                                         }
                                         navController.navigate(dest.route) {
@@ -118,7 +118,7 @@ class MainActivity : ComponentActivity() {
                         composable(Dest.Home.route) {
                             HomeScreen { query ->
                                 val graph = navController.graph
-                                if (!isGraphReady || graph.nodes.isEmpty() || graph.startDestinationId == 0) {
+                                if (!isGraphReady || graph.nodes.size() == 0 || graph.startDestinationId == 0) {
                                     return@HomeScreen
                                 }
                                 navController.navigate("${Dest.Search.route}?query=${Uri.encode(query)}") {
