@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -14,6 +15,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -21,15 +24,19 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import coil.compose.AsyncImage
 import com.digitalturbine.promptnews.data.rss.Article
 import com.digitalturbine.promptnews.data.rss.GoogleNewsRepository
@@ -111,7 +118,7 @@ fun HomeScreen(onSearch: (String) -> Unit) {
             item { SectionTitle("Top Stories") }
             item { HeroCard(heroTop) { openArticle(ctx, it) } }
         }
-        items(listTop, key = { it.link }) { art ->
+        itemsIndexed(listTop, key = { index, art -> "${art.link}-$index" }) { _, art ->
             SmallArticleRow(art, onClick = { openArticle(ctx, art.link) })
         }
 
@@ -121,7 +128,7 @@ fun HomeScreen(onSearch: (String) -> Unit) {
             item { SectionTitle("Local News • $location") }
             item { HeroCard(heroLocal) { openArticle(ctx, it) } }
         }
-        items(listLocal, key = { it.link }) { art ->
+        itemsIndexed(listLocal, key = { index, art -> "${art.link}-$index" }) { _, art ->
             SmallArticleRow(art, onClick = { openArticle(ctx, art.link) })
         }
 
@@ -140,6 +147,7 @@ private fun TrendingChipsRow(
     topics: List<String>,
     onTopicClick: (String) -> Unit
 ) {
+    val chipBlue = Color(0xFF1E88E5)
     Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
         Text(
             text = "Trending search topics",
@@ -154,7 +162,11 @@ private fun TrendingChipsRow(
                 AssistChip(
                     onClick = { onTopicClick(t) },
                     label = { Text(t) },
-                    shape = RoundedCornerShape(24.dp)
+                    shape = RoundedCornerShape(24.dp),
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = chipBlue,
+                        labelColor = Color.White
+                    )
                 )
             }
         }
@@ -164,25 +176,33 @@ private fun TrendingChipsRow(
 @Composable
 private fun SearchHeader(onSearch: (String) -> Unit) {
     var q by remember { mutableStateOf("") }
-    Surface(Modifier.fillMaxWidth()) {
+    Surface(Modifier.fillMaxWidth(), tonalElevation = 0.dp) {
         TextField(
             value = q,
             onValueChange = { q = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-                .height(56.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .height(54.dp),
             placeholder = { Text("search") },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             singleLine = true,
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(20.dp),
             keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(
                 onSearch = {
                     val s = q.trim()
                     if (s.isNotEmpty()) onSearch(s)
                 }
-            )
+            ),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color(0xFFF1EEF4),
+                unfocusedContainerColor = Color(0xFFF1EEF4),
+                disabledContainerColor = Color(0xFFF1EEF4),
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent
+            ),
+            textStyle = MaterialTheme.typography.titleMedium
         )
     }
 }
@@ -203,17 +223,26 @@ private fun HeroCard(article: Article, onClickLink: (String) -> Unit) {
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .clickable { onClickLink(article.link) }
+            .clickable { onClickLink(article.link) },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column {
             if (!article.imageUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = article.imageUrl,
-                    contentDescription = article.title,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                )
+                Box {
+                    AsyncImage(
+                        model = article.imageUrl,
+                        contentDescription = article.title,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    )
+                    CategoryBadge(
+                        label = "News",
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(12.dp)
+                    )
+                }
             }
             Column(Modifier.padding(16.dp)) {
                 val age = remember(article.published) {
@@ -242,6 +271,9 @@ private fun HeroCard(article: Article, onClickLink: (String) -> Unit) {
 
 @Composable
 private fun SmallArticleRow(article: Article, onClick: () -> Unit) {
+    val age = remember(article.published) {
+        article.published?.toEpochMillisCompat()?.let { ageLabelFrom(it) }
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -261,14 +293,46 @@ private fun SmallArticleRow(article: Article, onClick: () -> Unit) {
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
+            if (!age.isNullOrBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = age,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
         Spacer(Modifier.width(12.dp))
-        AsyncImage(
-            model = article.imageUrl,
-            contentDescription = null,
-            modifier = Modifier
-                .size(width = 92.dp, height = 76.dp)
-                .clip(RoundedCornerShape(12.dp))
+        Column(horizontalAlignment = Alignment.End) {
+            AsyncImage(
+                model = article.imageUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(width = 92.dp, height = 76.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            )
+            Spacer(Modifier.height(8.dp))
+            CategoryBadge(label = "News")
+        }
+    }
+}
+
+@Composable
+private fun CategoryBadge(
+    label: String,
+    modifier: Modifier = Modifier,
+    fontSize: TextUnit = MaterialTheme.typography.labelMedium.fontSize
+) {
+    Surface(
+        color = Color(0xFF1E88E5),
+        shape = RoundedCornerShape(14.dp),
+        modifier = modifier
+    ) {
+        Text(
+            text = label,
+            color = Color.White,
+            style = TextStyle(fontSize = fontSize, fontWeight = FontWeight.SemiBold),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
         )
     }
 }
