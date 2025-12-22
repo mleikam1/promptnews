@@ -20,6 +20,11 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.core.content.ContextCompat
@@ -34,6 +39,8 @@ import com.digitalturbine.promptnews.ui.home.HomeScreen
 import com.digitalturbine.promptnews.ui.search.SearchScreen
 import com.digitalturbine.promptnews.util.HomePrefs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -59,6 +66,16 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 val navController = rememberNavController()
                 val items = listOf(Dest.Search, Dest.Home, Dest.Following)
+                var isGraphReady by remember { mutableStateOf(false) }
+
+                // The crash happens when navigate() calls findStartDestination() while the graph
+                // is still empty. Track readiness so we never navigate until nodes exist.
+                LaunchedEffect(navController) {
+                    snapshotFlow { navController.graph }
+                        .map { graph -> graph.nodes.isNotEmpty() && graph.startDestinationId != 0 }
+                        .distinctUntilChanged()
+                        .collect { isGraphReady = it }
+                }
 
                 Scaffold(
                     bottomBar = {
@@ -68,9 +85,14 @@ class MainActivity : ComponentActivity() {
                             items.forEach { dest ->
                                 NavigationBarItem(
                                     selected = currentDestination?.route?.startsWith(dest.route) == true,
+                                    enabled = isGraphReady,
                                     onClick = {
+                                        val graph = navController.graph
+                                        if (!isGraphReady || graph.nodes.isEmpty() || graph.startDestinationId == 0) {
+                                            return@NavigationBarItem
+                                        }
                                         navController.navigate(dest.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                            popUpTo(graph.findStartDestination().id) { saveState = true }
                                             launchSingleTop = true
                                             restoreState = true
                                         }
@@ -95,8 +117,12 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(Dest.Home.route) {
                             HomeScreen { query ->
+                                val graph = navController.graph
+                                if (!isGraphReady || graph.nodes.isEmpty() || graph.startDestinationId == 0) {
+                                    return@HomeScreen
+                                }
                                 navController.navigate("${Dest.Search.route}?query=${Uri.encode(query)}") {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    popUpTo(graph.findStartDestination().id) { saveState = true }
                                     launchSingleTop = true
                                     restoreState = true
                                 }
