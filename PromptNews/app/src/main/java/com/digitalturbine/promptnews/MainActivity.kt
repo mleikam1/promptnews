@@ -91,7 +91,7 @@ class MainActivity : ComponentActivity() {
                                         Log.d(
                                             "Nav",
                                             "startDestinationId=${navController.graph.startDestinationId} " +
-                                                "nodes=${navController.graph.nodes.size}"
+                                                "nodes=${navController.graph.nodes.size()}"
                                         )
                                         if (!isGraphReady) {
                                             return@NavigationBarItem
