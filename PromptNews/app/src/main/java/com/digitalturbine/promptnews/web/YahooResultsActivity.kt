@@ -32,38 +32,46 @@ class YahooResultsActivity : ComponentActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val query = intent.getStringExtra("query").orEmpty()
+        val query = intent.getStringExtra("query")?.trim().orEmpty()
+        if (query.isBlank()) {
+            finish()
+            return
+        }
 
         setContent {
             var progress by remember { mutableFloatStateOf(0f) }
+            val webView = remember { WebView(this) }
+            DisposableEffect(webView) {
+                onDispose { webView.destroy() }
+            }
             Scaffold(
                 topBar = { CenterAlignedTopAppBar(title = { Text(if (query.isBlank()) "Yahoo" else query) }) }
             ) { pad ->
                 Column(Modifier.padding(pad)) {
                     if (progress in 0f..0.99f) LinearProgressIndicator(progress = progress)
-                    AndroidView(factory = { ctx ->
-                        WebView(ctx).apply {
+                    AndroidView(factory = {
+                        webView.apply {
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
                             webViewClient = object : WebViewClient() {
-                                override fun shouldOverrideUrlLoading(
-                                    view: WebView?,
-                                    request: WebResourceRequest?
-                                ): Boolean = false
+                            override fun shouldOverrideUrlLoading(
+                                view: WebView?,
+                                request: WebResourceRequest?
+                            ): Boolean = false
 
-                                override fun onPageFinished(view: WebView, url: String) {
-                                    progress = 1f
-                                    if (Uri.parse(url).host?.contains("yahoo.com") == true) {
-                                        val css = """
-                                            (function(){
-                                                var s=document.createElement('style');
-                                                s.innerHTML=`header,#header,#ybar,#ybar-inner-wrap,#uh-search,form[role="search"],.compSearch,#app-bar,.AppHeader,.UH,.skiplinks{display:none!important} body{padding-top:0!important}`;
-                                                document.head.appendChild(s);
-                                            })();
-                                        """.trimIndent()
-                                        view.evaluateJavascript(css, null)
-                                    }
+                            override fun onPageFinished(view: WebView, url: String) {
+                                progress = 1f
+                                if (Uri.parse(url).host?.contains("yahoo.com") == true) {
+                                    val css = """
+                                        (function(){
+                                            var s=document.createElement('style');
+                                            s.innerHTML=`header,#header,#ybar,#ybar-inner-wrap,#uh-search,form[role="search"],.compSearch,#app-bar,.AppHeader,.UH,.skiplinks{display:none!important} body{padding-top:0!important}`;
+                                            document.head.appendChild(s);
+                                        })();
+                                    """.trimIndent()
+                                    view.evaluateJavascript(css, null)
                                 }
+                            }
                             }
                             loadUrl(yahooUrl(query))
                         }

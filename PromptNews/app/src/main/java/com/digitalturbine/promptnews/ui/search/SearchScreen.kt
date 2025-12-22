@@ -55,7 +55,9 @@ fun SearchScreen(vm: SearchViewModel = viewModel()) {
         ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", url))
     }
     fun openYahoo(q: String) {
-        ctx.startActivity(Intent(ctx, YahooResultsActivity::class.java).putExtra("query", q))
+        val trimmed = q.trim()
+        if (trimmed.isBlank()) return
+        ctx.startActivity(Intent(ctx, YahooResultsActivity::class.java).putExtra("query", trimmed))
     }
 
     LaunchedEffect(ui) {
@@ -91,7 +93,10 @@ fun SearchScreen(vm: SearchViewModel = viewModel()) {
                     placeholder = { Text("Your next discovery starts here") },
                     trailingIcon = {
                         IconButton(
-                            onClick = { if (text.isNotBlank()) vm.runSearch(text) }
+                            onClick = {
+                                val query = text.trim()
+                                if (query.isNotBlank()) vm.runSearch(query)
+                            }
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Search,
@@ -103,7 +108,10 @@ fun SearchScreen(vm: SearchViewModel = viewModel()) {
                     shape = RoundedCornerShape(28.dp),
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(
-                        onSearch = { if (text.isNotBlank()) vm.runSearch(text) }
+                        onSearch = {
+                            val query = text.trim()
+                            if (query.isNotBlank()) vm.runSearch(query)
+                        }
                     ),
                     modifier = Modifier
                         .fillMaxWidth(),
