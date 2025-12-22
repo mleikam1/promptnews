@@ -72,8 +72,9 @@ class MainActivity : ComponentActivity() {
                 // The crash happens when navigate() calls findStartDestination() while the graph
                 // is still empty. Track readiness so we never navigate until nodes exist.
                 LaunchedEffect(navController) {
+                    Log.d("Nav", "startDestination=${Dest.Search.route}")
                     snapshotFlow { navController.graph }
-                        .map { graph -> graph.nodes.size() > 0 && graph.startDestinationId != 0 }
+                        .map { graph -> graph.nodes.size() > 0 }
                         .distinctUntilChanged()
                         .collect { isGraphReady = it }
                 }
@@ -114,7 +115,7 @@ class MainActivity : ComponentActivity() {
                 ) { pad ->
                     NavHost(
                         navController = navController,
-                        startDestination = Dest.Home.route,
+                        startDestination = Dest.Search.route,
                         modifier = Modifier.padding(pad)
                     ) {
                         composable(
