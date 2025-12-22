@@ -2,6 +2,7 @@ package com.digitalturbine.promptnews.ui.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import com.digitalturbine.promptnews.data.SearchRepository
 import com.digitalturbine.promptnews.data.SearchUi
 import kotlinx.coroutines.Job
@@ -12,6 +13,10 @@ import kotlinx.coroutines.launch
 class SearchViewModel(
     private val repo: SearchRepository = SearchRepository()
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "SearchViewModel"
+    }
 
     private val _ui = MutableStateFlow<SearchUi>(SearchUi.Idle)
     val ui: StateFlow<SearchUi> = _ui
@@ -31,6 +36,7 @@ class SearchViewModel(
             runCatching {
                 val serp = repo.fetchSerpNews(q, page = 0, pageSize = 20)
                 val fs = if (serp.isEmpty()) {
+                    Log.d(TAG, "SerpAPI empty; triggering FotoScapes fallback for query=$q")
                     repo.fetchFotoScapes(q, limit = 3)
                 } else {
                     emptyList()
