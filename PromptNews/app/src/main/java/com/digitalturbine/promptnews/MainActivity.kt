@@ -7,6 +7,7 @@ import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -29,7 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -87,14 +88,21 @@ class MainActivity : ComponentActivity() {
                                     selected = currentDestination?.route?.startsWith(dest.route) == true,
                                     enabled = isGraphReady,
                                     onClick = {
-                                        val graph = navController.graph
-                                        if (!isGraphReady || graph.nodes.size() == 0 || graph.startDestinationId == 0) {
+                                        Log.d(
+                                            "Nav",
+                                            "startDestinationId=${navController.graph.startDestinationId} " +
+                                                "nodes=${navController.graph.nodes.size}"
+                                        )
+                                        if (!isGraphReady) {
                                             return@NavigationBarItem
                                         }
+                                        val startId = navController.safeStartDestinationId()
                                         navController.navigate(dest.route) {
-                                            popUpTo(graph.findStartDestination().id) { saveState = true }
                                             launchSingleTop = true
                                             restoreState = true
+                                            if (startId != null) {
+                                                popUpTo(startId) { saveState = true }
+                                            }
                                         }
                                     },
                                     icon = { Icon(dest.icon, contentDescription = dest.label) },
@@ -106,7 +114,7 @@ class MainActivity : ComponentActivity() {
                 ) { pad ->
                     NavHost(
                         navController = navController,
-                        startDestination = Dest.Search.route,
+                        startDestination = Dest.Home.route,
                         modifier = Modifier.padding(pad)
                     ) {
                         composable(
@@ -117,14 +125,16 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(Dest.Home.route) {
                             HomeScreen { query ->
-                                val graph = navController.graph
-                                if (!isGraphReady || graph.nodes.size() == 0 || graph.startDestinationId == 0) {
+                                if (!isGraphReady) {
                                     return@HomeScreen
                                 }
+                                val startId = navController.safeStartDestinationId()
                                 navController.navigate("${Dest.Search.route}?query=${Uri.encode(query)}") {
-                                    popUpTo(graph.findStartDestination().id) { saveState = true }
                                     launchSingleTop = true
                                     restoreState = true
+                                    if (startId != null) {
+                                        popUpTo(startId) { saveState = true }
+                                    }
                                 }
                             }
                         }
@@ -215,4 +225,9 @@ private sealed class Dest(val route: String, val label: String, val icon: ImageV
     data object Search : Dest("tab_search", "Search", Icons.Filled.Search)
     data object Home : Dest("tab_home", "Home", Icons.Filled.Home)
     data object Following : Dest("tab_following", "Following", Icons.Filled.FavoriteBorder)
+}
+
+private fun NavController.safeStartDestinationId(): Int? {
+    val id = graph.startDestinationId
+    return if (id != 0) id else null
 }
