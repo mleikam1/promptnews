@@ -1,6 +1,7 @@
 package com.digitalturbine.promptnews.data
 
 import android.net.Uri
+import android.util.Log
 import com.digitalturbine.promptnews.data.net.Http   // <-- fixed import
 import com.digitalturbine.promptnews.data.serpapi.SerpApiMapper
 import com.digitalturbine.promptnews.data.serpapi.SerpApiStoryDto
@@ -78,6 +79,10 @@ private fun inferInterest(title: String): String {
 
 class SearchRepository {
 
+    companion object {
+        private const val TAG = "SearchRepository"
+    }
+
     private val serpApiMapper = SerpApiMapper()
 
     // FotoScapes (first-party)
@@ -147,6 +152,21 @@ class SearchRepository {
         }
 
     private fun fetchSerpNewsDtos(query: String, page: Int, pageSize: Int): List<SerpApiStoryDto> {
+        fun safeRequest(url: String): String? {
+            return runCatching {
+                Http.client.newCall(Http.req(url)).execute().use { r ->
+                    if (!r.isSuccessful) {
+                        Log.w(TAG, "SerpAPI request failed (${r.code}) for $url")
+                        return@use null
+                    }
+                    r.body?.string().orEmpty().ifBlank { null }
+                }
+            }.getOrElse { err ->
+                Log.w(TAG, "SerpAPI request error for $url", err)
+                null
+            }
+        }
+
         fun parse(jsonStr: String): List<SerpApiStoryDto> {
             if (jsonStr.isBlank()) return emptyList()
             val root = JSONObject(jsonStr)
@@ -194,25 +214,19 @@ class SearchRepository {
 
         var out: List<SerpApiStoryDto> = emptyList()
 
-        Http.client.newCall(Http.req(serpUri(mapOf(
+        safeRequest(serpUri(mapOf(
             "engine" to "google_news", "q" to query, "num" to num, "start" to start
-        )))).execute().use { r ->
-            if (r.isSuccessful) out = parse(r.body?.string().orEmpty())
-        }
+        )))?.let { out = parse(it) }
         if (out.isNotEmpty()) return out
 
-        Http.client.newCall(Http.req(serpUri(mapOf(
+        safeRequest(serpUri(mapOf(
             "engine" to "bing_news", "q" to query, "count" to num, "first" to start, "cc" to "US"
-        )))).execute().use { r ->
-            if (r.isSuccessful) out = parse(r.body?.string().orEmpty())
-        }
+        )))?.let { out = parse(it) }
         if (out.isNotEmpty()) return out
 
-        Http.client.newCall(Http.req(serpUri(mapOf(
+        safeRequest(serpUri(mapOf(
             "engine" to "google", "tbm" to "nws", "q" to query, "num" to num, "start" to start
-        )))).execute().use { r ->
-            if (r.isSuccessful) out = parse(r.body?.string().orEmpty())
-        }
+        )))?.let { out = parse(it) }
 
         return out
     }
@@ -286,13 +300,23 @@ class SearchRepository {
             return out
         }
 
-        val shorts = Http.client.newCall(
-            Http.req(serpUri(mapOf("engine" to "google_videos", "q" to "site:youtube.com/shorts $query")))
-        ).execute().use { if (it.isSuccessful) parse(it.body?.string().orEmpty()) else emptyList() }
+        val shorts = runCatching {
+            Http.client.newCall(
+                Http.req(serpUri(mapOf("engine" to "google_videos", "q" to "site:youtube.com/shorts $query")))
+            ).execute().use { if (it.isSuccessful) parse(it.body?.string().orEmpty()) else emptyList() }
+        }.getOrElse { err ->
+            Log.w(TAG, "SerpAPI clips request failed for shorts", err)
+            emptyList()
+        }
 
-        val general = Http.client.newCall(
-            Http.req(serpUri(mapOf("engine" to "google_videos", "q" to query)))
-        ).execute().use { if (it.isSuccessful) parse(it.body?.string().orEmpty()) else emptyList() }
+        val general = runCatching {
+            Http.client.newCall(
+                Http.req(serpUri(mapOf("engine" to "google_videos", "q" to query)))
+            ).execute().use { if (it.isSuccessful) parse(it.body?.string().orEmpty()) else emptyList() }
+        }.getOrElse { err ->
+            Log.w(TAG, "SerpAPI clips request failed for general", err)
+            emptyList()
+        }
 
         (shorts + general).distinctBy { it.url }.take(18)
     }
@@ -302,21 +326,25 @@ class SearchRepository {
         if (Config.serpApiKey.isBlank()) return@withContext emptyList<String>()
         val reqUrl = serpUri(mapOf("engine" to "google_images", "q" to query, "ijn" to "0"))
         val out = mutableListOf<String>()
-        Http.client.newCall(Http.req(reqUrl)).execute().use { r ->
-            if (!r.isSuccessful) return@use
-            val body = r.body?.string().orEmpty()
-            if (body.isBlank()) return@use
-            val root = JSONObject(body)
-            val arr  = root.optJSONArray("images_results") ?: JSONArray()
-            for (i in 0 until arr.length()) {
-                val j = arr.optJSONObject(i) ?: continue
-                val u = firstHttp(JSONObject()
-                    .put("original", j.opt("original"))
-                    .put("image", j.opt("image"))
-                    .put("thumbnail", j.opt("thumbnail")))
-                if (!u.isNullOrBlank()) out += tryUpscaleCdn(u)
-                if (out.size >= 10) break
+        runCatching {
+            Http.client.newCall(Http.req(reqUrl)).execute().use { r ->
+                if (!r.isSuccessful) return@use
+                val body = r.body?.string().orEmpty()
+                if (body.isBlank()) return@use
+                val root = JSONObject(body)
+                val arr  = root.optJSONArray("images_results") ?: JSONArray()
+                for (i in 0 until arr.length()) {
+                    val j = arr.optJSONObject(i) ?: continue
+                    val u = firstHttp(JSONObject()
+                        .put("original", j.opt("original"))
+                        .put("image", j.opt("image"))
+                        .put("thumbnail", j.opt("thumbnail")))
+                    if (!u.isNullOrBlank()) out += tryUpscaleCdn(u)
+                    if (out.size >= 10) break
+                }
             }
+        }.onFailure { err ->
+            Log.w(TAG, "SerpAPI images request failed", err)
         }
         out
     }
@@ -328,26 +356,30 @@ class SearchRepository {
         var people: List<String> = emptyList()
         var related: List<String> = emptyList()
 
-        Http.client.newCall(Http.req(reqUrl)).execute().use { r ->
-            if (!r.isSuccessful) return@use
-            val body = r.body?.string().orEmpty()
-            if (body.isBlank()) return@use
-            val root = JSONObject(body)
+        runCatching {
+            Http.client.newCall(Http.req(reqUrl)).execute().use { r ->
+                if (!r.isSuccessful) return@use
+                val body = r.body?.string().orEmpty()
+                if (body.isBlank()) return@use
+                val root = JSONObject(body)
 
-            fun toStrings(arr: JSONArray?): List<String> {
-                if (arr == null) return emptyList()
-                val ret = mutableListOf<String>()
-                for (i in 0 until arr.length()) {
-                    val j = arr.optJSONObject(i) ?: continue
-                    val s = j.optString("question").ifBlank { j.optString("title") }
-                    if (s.isNotBlank()) ret += s
+                fun toStrings(arr: JSONArray?): List<String> {
+                    if (arr == null) return emptyList()
+                    val ret = mutableListOf<String>()
+                    for (i in 0 until arr.length()) {
+                        val j = arr.optJSONObject(i) ?: continue
+                        val s = j.optString("question").ifBlank { j.optString("title") }
+                        if (s.isNotBlank()) ret += s
+                    }
+                    return ret
                 }
-                return ret
-            }
 
-            people = toStrings(root.optJSONArray("related_questions")
-                ?: root.optJSONArray("people_also_ask")).take(4)
-            related = toStrings(root.optJSONArray("related_searches")).take(10)
+                people = toStrings(root.optJSONArray("related_questions")
+                    ?: root.optJSONArray("people_also_ask")).take(4)
+                related = toStrings(root.optJSONArray("related_searches")).take(10)
+            }
+        }.onFailure { err ->
+            Log.w(TAG, "SerpAPI extras request failed", err)
         }
 
         Extras(peopleAlsoAsk = people, relatedSearches = related)
