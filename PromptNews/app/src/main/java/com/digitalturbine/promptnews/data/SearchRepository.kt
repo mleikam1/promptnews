@@ -86,7 +86,9 @@ class SearchRepository {
             val route = fotoscapesEndpointForQuery(query) ?: return@withContext emptyList()
             Http.client.newCall(Http.req(route.endpoint)).execute().use { resp ->
                 if (!resp.isSuccessful) return@withContext emptyList()
-                val root = JSONObject(resp.body?.string().orEmpty())
+                val body = resp.body?.string().orEmpty()
+                if (body.isBlank()) return@withContext emptyList()
+                val root = JSONObject(body)
                 val items = root.optJSONArray("items") ?: JSONArray()
 
                 (0 until items.length()).asSequence().mapNotNull { i ->
@@ -146,6 +148,7 @@ class SearchRepository {
 
     private fun fetchSerpNewsDtos(query: String, page: Int, pageSize: Int): List<SerpApiStoryDto> {
         fun parse(jsonStr: String): List<SerpApiStoryDto> {
+            if (jsonStr.isBlank()) return emptyList()
             val root = JSONObject(jsonStr)
             val candidates =
                 root.optJSONArray("news_results")
@@ -242,7 +245,9 @@ class SearchRepository {
 
             Http.client.newCall(Http.req(u)).execute().use { r ->
                 if (r.isSuccessful) {
-                    val root  = JSONObject(r.body?.string().orEmpty())
+                    val body = r.body?.string().orEmpty()
+                    if (body.isBlank()) return@use
+                    val root  = JSONObject(body)
                     val items = root.optJSONArray("items") ?: JSONArray()
                     val out   = mutableListOf<Clip>()
                     for (i in 0 until items.length()) {
@@ -264,6 +269,7 @@ class SearchRepository {
         if (Config.serpApiKey.isBlank()) return@withContext emptyList<Clip>()
 
         fun parse(str: String): List<Clip> {
+            if (str.isBlank()) return emptyList()
             val root = JSONObject(str)
             val list = root.optJSONArray("video_results")
                 ?: root.optJSONArray("inline_videos")
@@ -298,7 +304,9 @@ class SearchRepository {
         val out = mutableListOf<String>()
         Http.client.newCall(Http.req(reqUrl)).execute().use { r ->
             if (!r.isSuccessful) return@use
-            val root = JSONObject(r.body?.string().orEmpty())
+            val body = r.body?.string().orEmpty()
+            if (body.isBlank()) return@use
+            val root = JSONObject(body)
             val arr  = root.optJSONArray("images_results") ?: JSONArray()
             for (i in 0 until arr.length()) {
                 val j = arr.optJSONObject(i) ?: continue
@@ -322,7 +330,9 @@ class SearchRepository {
 
         Http.client.newCall(Http.req(reqUrl)).execute().use { r ->
             if (!r.isSuccessful) return@use
-            val root = JSONObject(r.body?.string().orEmpty())
+            val body = r.body?.string().orEmpty()
+            if (body.isBlank()) return@use
+            val root = JSONObject(body)
 
             fun toStrings(arr: JSONArray?): List<String> {
                 if (arr == null) return emptyList()

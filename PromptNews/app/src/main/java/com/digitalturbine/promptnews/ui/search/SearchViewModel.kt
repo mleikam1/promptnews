@@ -28,27 +28,31 @@ class SearchViewModel(
         _ui.value = SearchUi.Searching(q)
 
         viewModelScope.launch {
-            val fs = repo.fetchFotoScapes(q, limit = 3)
-            val serp = repo.fetchSerpNews(q, page = 0, pageSize = 20)
+            runCatching {
+                val fs = repo.fetchFotoScapes(q, limit = 3)
+                val serp = repo.fetchSerpNews(q, page = 0, pageSize = 20)
 
-            val list = (fs + serp).distinctBy { it.url }
-            val hero = list.firstOrNull()
-            val rows = list.drop(1).take(4)
+                val list = (fs + serp).distinctBy { it.url }
+                val hero = list.firstOrNull()
+                val rows = list.drop(1).take(4)
 
-            val clips = repo.fetchClips(q)
-            val images = repo.fetchImages(q)
-            val extras = repo.fetchExtras(q)
+                val clips = repo.fetchClips(q)
+                val images = repo.fetchImages(q)
+                val extras = repo.fetchExtras(q)
 
-            _ui.value = SearchUi.Ready(
-                query = q,
-                hero = hero,
-                rows = rows,
-                hasMore = list.size > 5, // initial > hero+4
-                clips = clips,
-                images = images,
-                extras = extras
-            )
-            page = 1
+                _ui.value = SearchUi.Ready(
+                    query = q,
+                    hero = hero,
+                    rows = rows,
+                    hasMore = list.size > 5, // initial > hero+4
+                    clips = clips,
+                    images = images,
+                    extras = extras
+                )
+                page = 1
+            }.onFailure { err ->
+                _ui.value = SearchUi.Error(err.message ?: "Search failed.")
+            }
         }
     }
 
@@ -57,10 +61,14 @@ class SearchViewModel(
         if (loadMoreJob?.isActive == true) return
 
         loadMoreJob = viewModelScope.launch {
-            val next = repo.fetchSerpNews(currentQuery, page = page, pageSize = 20)
-            page += 1
-            val dedup = (state.rows + next).distinctBy { it.url }
-            _ui.value = state.copy(rows = dedup, hasMore = next.isNotEmpty())
+            runCatching {
+                val next = repo.fetchSerpNews(currentQuery, page = page, pageSize = 20)
+                page += 1
+                val dedup = (state.rows + next).distinctBy { it.url }
+                _ui.value = state.copy(rows = dedup, hasMore = next.isNotEmpty())
+            }.onFailure { err ->
+                _ui.value = SearchUi.Error(err.message ?: "Search failed.")
+            }
         }
     }
 }
