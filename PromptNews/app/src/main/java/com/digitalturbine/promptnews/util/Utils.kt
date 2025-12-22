@@ -1,5 +1,7 @@
 package com.digitalturbine.promptnews.util
 
+import android.annotation.SuppressLint
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
 
@@ -25,6 +27,9 @@ fun ageLabelFrom(publishedAtMillis: Long?): String? {
     val diffHrs = max(1, TimeUnit.MILLISECONDS.toHours(System.currentTimeMillis() - publishedAtMillis).toInt())
     return if (diffHrs <= 12) "$diffHrs hours ago" else "Popular"
 }
+
+@SuppressLint("NewApi")
+fun Instant.toEpochMillisCompat(): Long = toEpochMilli()
 
 fun faviconFrom(articleUrl: String?, size: Int = 64): String? {
     if (articleUrl.isNullOrBlank()) return null

@@ -1,5 +1,6 @@
 package com.digitalturbine.promptnews.ui.home
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -34,6 +35,7 @@ import com.digitalturbine.promptnews.data.rss.Article
 import com.digitalturbine.promptnews.data.rss.GoogleNewsRepository
 import com.digitalturbine.promptnews.util.HomePrefs
 import com.digitalturbine.promptnews.util.ageLabelFrom
+import com.digitalturbine.promptnews.util.toEpochMillisCompat
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import kotlinx.coroutines.launch
 
@@ -215,7 +217,7 @@ private fun HeroCard(article: Article, onClickLink: (String) -> Unit) {
             }
             Column(Modifier.padding(16.dp)) {
                 val age = remember(article.published) {
-                    article.published?.toEpochMilli()?.let { ageLabelFrom(it) }
+                    article.published?.toEpochMillisCompat()?.let { ageLabelFrom(it) }
                 }
                 if (!age.isNullOrBlank()) {
                     Text(

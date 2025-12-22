@@ -16,6 +16,7 @@ import com.digitalturbine.promptnews.domain.model.Sentiment
 import com.digitalturbine.promptnews.domain.model.SortMode
 import com.digitalturbine.promptnews.domain.model.StorySource
 import com.digitalturbine.promptnews.domain.model.UnifiedStory
+import com.digitalturbine.promptnews.util.toEpochMillisCompat
 import java.time.Instant
 
 fun Prompt.toEntity(): PromptEntity {
@@ -27,11 +28,11 @@ fun Prompt.toEntity(): PromptEntity {
         publishers = filters.publishers.toList(),
         languages = filters.languages.toList(),
         keywords = filters.keywords.toList(),
-        fromDateMs = filters.fromDate?.toEpochMilli(),
-        toDateMs = filters.toDate?.toEpochMilli(),
+        fromDateMs = filters.fromDate?.toEpochMillisCompat(),
+        toDateMs = filters.toDate?.toEpochMillisCompat(),
         safeMode = filters.safeMode.name,
         sortMode = filters.sortMode.name,
-        createdAtMs = createdAt?.toEpochMilli()
+        createdAtMs = createdAt?.toEpochMillisCompat()
     )
 }
 
@@ -68,7 +69,7 @@ fun UnifiedStory.toEntity(): StoryEntity {
         summary = summary,
         source = source.name,
         publisher = publisher?.toEntity(),
-        publishedAtMs = publishedAt?.toEpochMilli(),
+        publishedAtMs = publishedAt?.toEpochMillisCompat(),
         imageUrl = imageUrl,
         sentiment = sentiment?.toEntity(),
         namedEntities = namedEntities.map { it.toEntity() },
@@ -113,7 +114,7 @@ fun PromptResultBundle.toCacheSnapshot(
         promptId = promptEntity?.id,
         fetchedAtMs = fetchedAtMs,
         expiresAtMs = expiresAtMs,
-        generatedAtMs = generatedAt?.toEpochMilli(),
+        generatedAtMs = generatedAt?.toEpochMillisCompat(),
         nextPageToken = nextPageToken,
         cacheStaleness = cacheStaleness.name,
         relatedPrompts = relatedPrompts.map { it.toEntity() }
