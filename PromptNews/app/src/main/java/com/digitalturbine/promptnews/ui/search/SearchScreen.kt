@@ -38,17 +38,23 @@ import coil.compose.rememberAsyncImagePainter
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.Clip
 import com.digitalturbine.promptnews.data.SearchUi
+import com.digitalturbine.promptnews.data.history.HistoryRepository
+import com.digitalturbine.promptnews.data.history.HistoryType
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SearchScreen(
     initialQuery: String? = null,
+    initialSource: String? = null,
     vm: SearchViewModel = viewModel()
 ) {
     val ui by vm.ui.collectAsState()
     val ctx = LocalContext.current
+    val historyRepository = remember(ctx) { HistoryRepository.getInstance(ctx) }
+    val scope = rememberCoroutineScope()
 
     var text by remember { mutableStateOf("") }
     var lastQuery by remember { mutableStateOf("") }
@@ -56,11 +62,22 @@ fun SearchScreen(
     fun openArticle(url: String) {
         ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", url))
     }
-    fun runSearch(q: String) {
+    fun runSearch(q: String, type: HistoryType, recordHistory: Boolean) {
         val trimmed = q.trim()
         if (trimmed.isBlank()) return
         text = trimmed
         vm.runSearch(trimmed)
+        if (recordHistory) {
+            scope.launch {
+                historyRepository.addEntry(type, trimmed)
+            }
+        }
+    }
+    fun runSearchFromInput(q: String) {
+        runSearch(q, HistoryType.SEARCH, true)
+    }
+    fun runChipSearch(q: String) {
+        runSearch(q, HistoryType.CHIP, true)
     }
 
     LaunchedEffect(ui) {
@@ -76,7 +93,8 @@ fun SearchScreen(
     LaunchedEffect(initialQuery) {
         val trimmed = initialQuery?.trim().orEmpty()
         if (trimmed.isNotBlank() && trimmed != lastQuery) {
-            runSearch(trimmed)
+            val type = initialSource?.let { source -> runCatching { HistoryType.valueOf(source) }.getOrNull() }
+            runSearch(trimmed, type ?: HistoryType.SEARCH, type != null)
         }
     }
 
@@ -104,7 +122,7 @@ fun SearchScreen(
                     trailingIcon = {
                         IconButton(
                             onClick = {
-                                runSearch(text)
+                                runSearchFromInput(text)
                             }
                         ) {
                             Icon(
@@ -118,7 +136,7 @@ fun SearchScreen(
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(
                         onSearch = {
-                            runSearch(text)
+                            runSearchFromInput(text)
                         }
                     ),
                     modifier = Modifier
@@ -167,7 +185,7 @@ fun SearchScreen(
                         ) {
                             chips.forEach { c ->
                                 AssistChip(
-                                    onClick = { text = c; vm.runSearch(c) },
+                                    onClick = { runChipSearch(c) },
                                     label = { Text(c) },
                                     shape = RoundedCornerShape(22.dp),
                                     colors = AssistChipDefaults.assistChipColors(
@@ -285,7 +303,7 @@ fun SearchScreen(
                     }
                     items(s.extras.peopleAlsoAsk) { q ->
                         ElevatedCard(
-                            onClick = { runSearch(q) },
+                            onClick = { runSearchFromInput(q) },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp)
                         ) {
@@ -321,7 +339,7 @@ fun SearchScreen(
                             ) {
                                 s.extras.relatedSearches.forEach { chip ->
                                     AssistChip(
-                                        onClick = { runSearch(chip) },
+                                        onClick = { runChipSearch(chip) },
                                         label = { Text(chip) },
                                         shape = RoundedCornerShape(16.dp),
                                         colors = AssistChipDefaults.assistChipColors(
