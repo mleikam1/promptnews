@@ -11,15 +11,12 @@ import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,8 +34,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.digitalturbine.promptnews.ui.home.HomeScreen
+import com.digitalturbine.promptnews.ui.history.HistoryScreen
 import com.digitalturbine.promptnews.ui.search.SearchScreen
 import com.digitalturbine.promptnews.util.HomePrefs
+import com.digitalturbine.promptnews.data.history.HistoryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -49,6 +48,7 @@ import java.util.Locale
 import kotlin.coroutines.resume
 
 class MainActivity : ComponentActivity() {
+    private val historyRepository by lazy { HistoryRepository.getInstance(applicationContext) }
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -62,11 +62,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        lifecycleScope.launch {
+            historyRepository.pruneOldEntries()
+        }
         maybeRequestLocation()
         setContent {
             MaterialTheme {
                 val navController = rememberNavController()
-                val items = listOf(Dest.Search, Dest.Home, Dest.Following)
+                val items = listOf(Dest.Search, Dest.Home, Dest.History)
                 var isGraphReady by remember { mutableStateOf(false) }
 
                 // The crash happens when navigate() calls findStartDestination() while the graph
@@ -119,10 +122,16 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(pad)
                     ) {
                         composable(
-                            route = "${Dest.Search.route}?query={query}",
-                            arguments = listOf(navArgument("query") { defaultValue = "" })
+                            route = "${Dest.Search.route}?query={query}&source={source}",
+                            arguments = listOf(
+                                navArgument("query") { defaultValue = "" },
+                                navArgument("source") { defaultValue = "" }
+                            )
                         ) { backStackEntry ->
-                            SearchScreen(initialQuery = backStackEntry.arguments?.getString("query"))
+                            SearchScreen(
+                                initialQuery = backStackEntry.arguments?.getString("query"),
+                                initialSource = backStackEntry.arguments?.getString("source")
+                            )
                         }
                         composable(Dest.Home.route) {
                             HomeScreen { query ->
@@ -130,7 +139,9 @@ class MainActivity : ComponentActivity() {
                                     return@HomeScreen
                                 }
                                 val startId = navController.safeStartDestinationId()
-                                navController.navigate("${Dest.Search.route}?query=${Uri.encode(query)}") {
+                                navController.navigate(
+                                    "${Dest.Search.route}?query=${Uri.encode(query)}&source=SEARCH"
+                                ) {
                                     launchSingleTop = true
                                     restoreState = true
                                     if (startId != null) {
@@ -139,10 +150,33 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-                        composable(Dest.Following.route) { FollowingScreen() }
+                        composable(Dest.History.route) {
+                            HistoryScreen { entry ->
+                                if (!isGraphReady) {
+                                    return@HistoryScreen
+                                }
+                                val startId = navController.safeStartDestinationId()
+                                navController.navigate(
+                                    "${Dest.Search.route}?query=${Uri.encode(entry.label)}&source=${entry.type.name}"
+                                ) {
+                                    launchSingleTop = true
+                                    restoreState = true
+                                    if (startId != null) {
+                                        popUpTo(startId) { saveState = true }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch {
+            historyRepository.pruneOldEntries()
         }
     }
 
@@ -215,17 +249,10 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable
-private fun FollowingScreen() {
-    Box(Modifier.fillMaxSize()) {
-        Text(text = "Following (coming soon)", style = MaterialTheme.typography.titleMedium)
-    }
-}
-
 private sealed class Dest(val route: String, val label: String, val icon: ImageVector) {
     data object Search : Dest("tab_search", "Search", Icons.Filled.Search)
     data object Home : Dest("tab_home", "Home", Icons.Filled.Home)
-    data object Following : Dest("tab_following", "Following", Icons.Filled.FavoriteBorder)
+    data object History : Dest("tab_history", "History", Icons.Filled.History)
 }
 
 private fun NavController.safeStartDestinationId(): Int? {

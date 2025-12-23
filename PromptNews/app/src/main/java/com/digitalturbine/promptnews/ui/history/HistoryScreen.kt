@@ -1,0 +1,112 @@
+package com.digitalturbine.promptnews.ui.history
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.digitalturbine.promptnews.data.history.HistoryEntry
+import com.digitalturbine.promptnews.data.history.HistoryRepository
+import com.digitalturbine.promptnews.data.history.HistoryType
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+@Composable
+fun HistoryScreen(
+    onEntrySelected: (HistoryEntry) -> Unit,
+    vm: HistoryViewModel = run {
+        val context = LocalContext.current
+        val repository = remember(context) { HistoryRepository.getInstance(context) }
+        viewModel(factory = HistoryViewModelFactory(repository))
+    }
+) {
+    val entries by vm.entries.collectAsState()
+
+    LaunchedEffect(Unit) {
+        vm.pruneOldEntries()
+    }
+
+    if (entries.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Your recent searches and topics will appear here.",
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+        return
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(entries, key = { it.id }) { entry ->
+            ListItem(
+                leadingContent = {
+                    Icon(
+                        imageVector = when (entry.type) {
+                            HistoryType.CHIP -> Icons.Filled.Label
+                            HistoryType.SEARCH -> Icons.Filled.Search
+                        },
+                        contentDescription = null
+                    )
+                },
+                headlineContent = { Text(entry.label) },
+                supportingContent = { Text(formatHistoryTime(entry.timestampMs)) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onEntrySelected(entry) }
+            )
+        }
+    }
+}
+
+private fun formatHistoryTime(timestampMs: Long, nowMs: Long = System.currentTimeMillis()): String {
+    val duration = Duration.ofMillis((nowMs - timestampMs).coerceAtLeast(0))
+    val minutes = duration.toMinutes()
+    val hours = duration.toHours()
+    return when {
+        minutes < 1 -> "Just now"
+        hours < 1 -> "${minutes}m ago"
+        hours < 24 -> "${hours}h ago"
+        else -> {
+            val zone = ZoneId.systemDefault()
+            val timestamp = Instant.ofEpochMilli(timestampMs).atZone(zone)
+            val now = Instant.ofEpochMilli(nowMs).atZone(zone)
+            val yesterday = now.minusDays(1).toLocalDate()
+            val formatter = if (timestamp.toLocalDate() == yesterday) {
+                DateTimeFormatter.ofPattern("'Yesterday' h:mm a")
+            } else {
+                DateTimeFormatter.ofPattern("MMM d, h:mm a")
+            }
+            timestamp.format(formatter)
+        }
+    }
+}
