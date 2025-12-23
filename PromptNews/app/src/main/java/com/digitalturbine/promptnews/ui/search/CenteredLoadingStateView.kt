@@ -54,7 +54,7 @@ fun CenteredLoadingStateView(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .padding(WindowInsets.safeDrawing.asPaddingValues()),
+                .padding(WindowInsets.systemBars.asPaddingValues()),
             contentAlignment = Alignment.Center
         ) {
             Text(
