@@ -342,8 +342,7 @@ fun SearchScreen(
                         is SearchUi.Error -> {
                             item { Text("Error: ${s.message}") }
                         }
-                        is SearchUi.Searching,
-                        is SearchUi.Idle -> Unit
+                        is SearchUi.Searching -> Unit
                     }
                 }
             }
@@ -411,9 +410,9 @@ private fun SearchInputField(
             focusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
             unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
         ),
-        contentPadding = TextFieldDefaults.contentPaddingWithoutLabel(
-            top = 10.dp,
-            bottom = 10.dp
+        contentPadding = PaddingValues(
+            horizontal = 16.dp,
+            vertical = 10.dp
         )
     )
 }
