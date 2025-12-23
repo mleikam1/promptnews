@@ -151,7 +151,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         composable(Dest.History.route) {
-                            HistoryScreen { entry ->
+                            HistoryScreen(onEntrySelected = { entry ->
                                 if (!isGraphReady) {
                                     return@HistoryScreen
                                 }
@@ -165,7 +165,7 @@ class MainActivity : ComponentActivity() {
                                         popUpTo(startId) { saveState = true }
                                     }
                                 }
-                            }
+                            })
                         }
                     }
                 }
