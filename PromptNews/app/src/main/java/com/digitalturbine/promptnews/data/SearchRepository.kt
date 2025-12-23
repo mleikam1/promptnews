@@ -7,14 +7,12 @@ import com.digitalturbine.promptnews.data.serpapi.SerpApiMapper
 import com.digitalturbine.promptnews.data.serpapi.SerpApiStoryDto
 import com.digitalturbine.promptnews.domain.model.UnifiedStory
 import com.digitalturbine.promptnews.util.Config
+import com.digitalturbine.promptnews.util.TimeLabelFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.text.SimpleDateFormat
 import java.util.Locale
-import java.util.Date
-import kotlin.math.max
 
 // -----------------------------------------------------------------------------
 // helpers
@@ -46,17 +44,6 @@ private fun firstHttp(obj: Any?): String? {
 private fun tryUpscaleCdn(url: String): String =
     url.replace(Regex("=w\\d{2,4}(-h\\d{2,4})?(-no)?"), "=w1200-h800")
         .replace(Regex("=s\\d{2,4}"), "=s1200")
-
-private fun ageLabelFromIso(iso: String?): String? {
-    if (iso.isNullOrBlank()) return null
-    val dt = runCatching { Date(iso.toLong()) }.getOrNull()
-        ?: runCatching {
-            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).parse(iso)
-        }.getOrNull()
-    dt ?: return null
-    val hours = max(1, ((System.currentTimeMillis() - dt.time) / (1000 * 60 * 60)).toInt())
-    return if (hours <= 12) "$hours hours ago" else "Popular"
-}
 
 private fun inferInterest(title: String): String {
     val t = title.lowercase(Locale.US)
@@ -104,7 +91,9 @@ class SearchRepository {
                     if (title.isBlank() || link.isBlank() || img.isBlank()) return@mapNotNull null
 
                     val logo = (j.optString("brandLogoDark").ifBlank { j.optString("brandLogo") }).ifBlank { favicon(link) }
-                    val age  = ageLabelFromIso(j.optString("publishOn").ifBlank { j.optString("scheduledOn") })
+                    val age = TimeLabelFormatter.formatTimeLabel(
+                        j.optString("publishOn").ifBlank { j.optString("scheduledOn") }
+                    )
 
                     Article(
                         title = title,
@@ -204,7 +193,7 @@ class SearchRepository {
                     imageUrl = tryUpscaleCdn(img),
                     logoUrl = favicon(link),
                     sourceName = srcName,
-                    ageLabel = if (age.isBlank()) null else age
+                    ageLabel = TimeLabelFormatter.formatTimeLabel(age)
                 )
             }
         }

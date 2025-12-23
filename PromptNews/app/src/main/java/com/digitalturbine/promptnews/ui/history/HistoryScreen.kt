@@ -28,10 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.digitalturbine.promptnews.data.history.HistoryEntry
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
-import java.time.Duration
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.digitalturbine.promptnews.util.TimeLabelFormatter
 
 @Composable
 fun HistoryScreen(
@@ -79,34 +76,11 @@ fun HistoryScreen(
                     )
                 },
                 headlineContent = { Text(entry.label) },
-                supportingContent = { Text(formatHistoryTime(entry.timestampMs)) },
+                supportingContent = { Text(TimeLabelFormatter.formatTimeLabel(entry.timestampMs)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onEntrySelected(entry) }
             )
-        }
-    }
-}
-
-private fun formatHistoryTime(timestampMs: Long, nowMs: Long = System.currentTimeMillis()): String {
-    val duration = Duration.ofMillis((nowMs - timestampMs).coerceAtLeast(0))
-    val minutes = duration.toMinutes()
-    val hours = duration.toHours()
-    return when {
-        minutes < 1 -> "Just now"
-        hours < 1 -> "${minutes}m ago"
-        hours < 24 -> "${hours}h ago"
-        else -> {
-            val zone = ZoneId.systemDefault()
-            val timestamp = Instant.ofEpochMilli(timestampMs).atZone(zone)
-            val now = Instant.ofEpochMilli(nowMs).atZone(zone)
-            val yesterday = now.minusDays(1).toLocalDate()
-            val formatter = if (timestamp.toLocalDate() == yesterday) {
-                DateTimeFormatter.ofPattern("'Yesterday' h:mm a")
-            } else {
-                DateTimeFormatter.ofPattern("MMM d, h:mm a")
-            }
-            timestamp.format(formatter)
         }
     }
 }

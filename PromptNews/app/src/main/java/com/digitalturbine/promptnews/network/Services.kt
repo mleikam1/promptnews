@@ -6,7 +6,7 @@ import com.digitalturbine.promptnews.data.Extras
 import com.digitalturbine.promptnews.data.SearchRepository
 import com.digitalturbine.promptnews.data.net.Http     // <-- fixed import
 import com.digitalturbine.promptnews.data.rss.parseGoogleNewsRss
-import com.digitalturbine.promptnews.util.ageLabelFrom
+import com.digitalturbine.promptnews.util.TimeLabelFormatter
 import com.digitalturbine.promptnews.util.faviconFrom
 import com.digitalturbine.promptnews.util.inferInterestFromTitle
 import com.digitalturbine.promptnews.util.toEpochMillisCompat
@@ -58,7 +58,7 @@ object Services {
 
                 val out = mutableListOf<Article>()
                 for (it in rssItems) {
-                    val age = it.published?.toEpochMillisCompat()?.let { ms -> ageLabelFrom(ms) }
+                    val age = TimeLabelFormatter.formatTimeLabel(it.published?.toEpochMillisCompat())
                     out += Article(
                         title = it.title,
                         url = it.link,
