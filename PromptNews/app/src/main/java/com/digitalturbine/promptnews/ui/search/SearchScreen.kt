@@ -155,6 +155,9 @@ fun SearchScreen(
         )
     )
 
+    val searchBarBottomPadding = 25.dp
+    val searchBarContentPadding = 96.dp
+
     Scaffold { padding ->
         Box(
             modifier = Modifier
@@ -166,19 +169,11 @@ fun SearchScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp)
+                        .padding(bottom = searchBarContentPadding)
                         .verticalScroll(rememberScrollState())
                 ) {
                     TopBar()
                     Spacer(Modifier.height(16.dp))
-                    SearchInputField(
-                        text = text,
-                        onValueChange = { text = it },
-                        onSearch = { runSearchFromInput(text) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 46.dp)
-                    )
-                    Spacer(Modifier.height(20.dp))
                     chips.forEachIndexed { index, row ->
                         ChipRow(
                             title = row.title,
@@ -195,20 +190,12 @@ fun SearchScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(bottom = searchBarContentPadding)
                 ) {
                     item {
                         TopBar()
                         Spacer(Modifier.height(12.dp))
-                        SearchInputField(
-                            text = text,
-                            onValueChange = { text = it },
-                            onSearch = { runSearchFromInput(text) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 46.dp)
-                        )
-                        Spacer(Modifier.height(16.dp))
                     }
                     item {
                         // “Finding …”
@@ -375,6 +362,20 @@ fun SearchScreen(
                         is SearchUi.Searching -> Unit
                     }
                 }
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 16.dp, vertical = searchBarBottomPadding)
+            ) {
+                SearchInputField(
+                    text = text,
+                    onValueChange = { text = it },
+                    onSearch = { runSearchFromInput(text) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 46.dp)
+                )
             }
         }
     }
