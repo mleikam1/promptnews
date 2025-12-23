@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -250,7 +250,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private sealed class Dest(val route: String, val label: String, val icon: ImageVector) {
-    data object Search : Dest("tab_search", "Search", Icons.Filled.Search)
+    data object Search : Dest("tab_search", "Prompt", Icons.Filled.Edit)
     data object Home : Dest("tab_home", "Home", Icons.Filled.Home)
     data object History : Dest("tab_history", "History", Icons.Filled.History)
 }
