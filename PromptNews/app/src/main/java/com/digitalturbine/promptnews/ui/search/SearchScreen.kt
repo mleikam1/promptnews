@@ -18,7 +18,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,7 +30,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -98,87 +98,43 @@ fun SearchScreen(
         }
     }
 
+    val chips = listOf(
+        "Taylor Swift",
+        "A.I.",
+        "VMAs",
+        "Space X",
+        "NFL",
+        "Bitcoin",
+        "iPhone Air",
+        "iPhone 17",
+        "Avengers: Doomsday",
+        "Superman",
+        "DCU",
+        "Beyonce",
+        "Weather Radar",
+        "K-Pop Demon Hunters",
+        "Fortnite",
+        "U.S. Open"
+    )
+
     Scaffold { padding ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp)
         ) {
-            item {
-                Text(
-                    "News that follows your interests.",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(20.dp))
-
-                TextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    placeholder = { Text("Your next discovery starts here") },
-                    trailingIcon = {
-                        IconButton(
-                            onClick = {
-                                runSearchFromInput(text)
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Search,
-                                contentDescription = "Search"
-                            )
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(28.dp),
-                    keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(
-                        onSearch = {
-                            runSearchFromInput(text)
-                        }
-                    ),
+            if (ui is SearchUi.Idle) {
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth(),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent,
-                        cursorColor = MaterialTheme.colorScheme.primary,
-                        focusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-                Spacer(Modifier.height(16.dp))
-
-                // Trending chips (fade out on search)
-                AnimatedVisibility(
-                    visible = ui is SearchUi.Idle,
-                    enter = fadeIn(),
-                    exit = fadeOut()
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
                 ) {
-                    Column {
-                        val chips = listOf(
-                            "Taylor Swift",
-                            "A.I.",
-                            "VMAs",
-                            "Space X",
-                            "NFL",
-                            "Bitcoin",
-                            "iPhone Air",
-                            "iPhone 17",
-                            "Avengers: Doomsday",
-                            "Superman",
-                            "DCU",
-                            "Beyonce",
-                            "Weather Radar",
-                            "K-Pop Demon Hunters",
-                            "Fortnite",
-                            "U.S. Open"
-                        )
+                    TopBar()
+                    Spacer(Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -195,27 +151,81 @@ fun SearchScreen(
                                 )
                             }
                         }
-                        Spacer(Modifier.height(16.dp))
                     }
-                }
-
-                // “Finding …”
-                AnimatedVisibility(
-                    visible = ui is SearchUi.Searching,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    Text(
-                        "Finding News and Information for “$lastQuery”",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(vertical = 8.dp)
+                    SearchInputField(
+                        text = text,
+                        onValueChange = { text = it },
+                        onSearch = { runSearchFromInput(text) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 46.dp)
+                            .padding(bottom = 20.dp)
                     )
                 }
-            }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    item {
+                        TopBar()
+                        Spacer(Modifier.height(12.dp))
+                        SearchInputField(
+                            text = text,
+                            onValueChange = { text = it },
+                            onSearch = { runSearchFromInput(text) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 46.dp)
+                        )
+                        Spacer(Modifier.height(16.dp))
+                    }
+                    item {
+                        // Trending chips (fade out on search)
+                        AnimatedVisibility(
+                            visible = ui is SearchUi.Idle,
+                            enter = fadeIn(),
+                            exit = fadeOut()
+                        ) {
+                            Column {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    chips.forEach { c ->
+                                        AssistChip(
+                                            onClick = { runChipSearch(c) },
+                                            label = { Text(c) },
+                                            shape = RoundedCornerShape(22.dp),
+                                            colors = AssistChipDefaults.assistChipColors(
+                                                containerColor = MaterialTheme.colorScheme.primary,
+                                                labelColor = MaterialTheme.colorScheme.onPrimary
+                                            )
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.height(16.dp))
+                            }
+                        }
 
-            when (val s = ui) {
-                is SearchUi.Ready -> {
+                        // “Finding …”
+                        AnimatedVisibility(
+                            visible = ui is SearchUi.Searching,
+                            enter = fadeIn(),
+                            exit = fadeOut()
+                        ) {
+                            Text(
+                                "Finding News and Information for “$lastQuery”",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        }
+                    }
+
+                    when (val s = ui) {
+                        is SearchUi.Ready -> {
                     // Hero
                     s.hero?.let { hero ->
                         item {
@@ -352,11 +362,81 @@ fun SearchScreen(
                         }
                     }
                 }
-                is SearchUi.Error -> item { Text("Error: ${s.message}") }
-                else -> {}
+                        }
+                        is SearchUi.Error -> item { Text("Error: ${s.message}") }
+                        else -> {}
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun TopBar() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "PromptNews",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+        IconButton(onClick = {}) {
+            Icon(
+                imageVector = Icons.Filled.AccountCircle,
+                contentDescription = "Profile"
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchInputField(
+    text: String,
+    onValueChange: (String) -> Unit,
+    onSearch: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    TextField(
+        value = text,
+        onValueChange = onValueChange,
+        placeholder = { Text("Your next discovery starts here") },
+        leadingIcon = {
+            IconButton(onClick = onSearch) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = "Prompt search"
+                )
+            }
+        },
+        singleLine = true,
+        shape = RoundedCornerShape(24.dp),
+        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(
+            onSearch = { onSearch() }
+        ),
+        modifier = modifier,
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent,
+            cursorColor = MaterialTheme.colorScheme.primary,
+            focusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        contentPadding = TextFieldDefaults.contentPaddingWithoutLabel(
+            top = 10.dp,
+            bottom = 10.dp
+        )
+    )
 }
 
 @Composable
