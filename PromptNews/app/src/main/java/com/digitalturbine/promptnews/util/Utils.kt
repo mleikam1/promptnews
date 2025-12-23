@@ -2,8 +2,6 @@ package com.digitalturbine.promptnews.util
 
 import android.annotation.SuppressLint
 import java.time.Instant
-import java.util.concurrent.TimeUnit
-import kotlin.math.max
 
 fun inferInterestFromTitle(title: String): String {
     val t = title.lowercase()
@@ -20,12 +18,6 @@ fun inferInterestFromTitle(title: String): String {
         has("\\b(movie|film|music|celebrity|oscars|grammys|series|netflix)\\b") -> "entertainment"
         else -> "news"
     }
-}
-
-fun ageLabelFrom(publishedAtMillis: Long?): String? {
-    if (publishedAtMillis == null) return null
-    val diffHrs = max(1, TimeUnit.MILLISECONDS.toHours(System.currentTimeMillis() - publishedAtMillis).toInt())
-    return if (diffHrs <= 12) "$diffHrs hours ago" else "Popular"
 }
 
 @SuppressLint("NewApi")

@@ -1,6 +1,7 @@
 package com.digitalturbine.promptnews.data.rss
 
 import com.digitalturbine.promptnews.data.Article
+import com.digitalturbine.promptnews.util.TimeLabelFormatter
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.w3c.dom.Element
@@ -17,7 +18,7 @@ import javax.xml.parsers.DocumentBuilderFactory
  *  - title, url
  *  - imageUrl (from media:content/enclosure when present, else "")
  *  - sourceName (from <source>)
- *  - ageLabel ("X hours ago" if <12h else "Popular")
+ *  - ageLabel (relative time if today, else "Popular")
  *  - logoUrl = "" (leave for your UI to map if desired)
  *  - interest = "news", isFotoscapes = false
  */
@@ -43,7 +44,7 @@ class GoogleNewsRss(private val http: OkHttpClient) {
                 val source = node.text("source")
                 val pub = node.text("pubDate")
                 val epoch = pub?.let { parseRfc822(it) }
-                val age = epoch?.let { labelForAge(it) } ?: ""
+                val age = TimeLabelFormatter.formatTimeLabel(epoch)
 
                 val img = node.attr("media:content", "url")
                     ?: node.attr("media:thumbnail", "url")
@@ -99,8 +100,4 @@ class GoogleNewsRss(private val http: OkHttpClient) {
         return null
     }
 
-    private fun labelForAge(publishedMs: Long): String {
-        val hours = ((System.currentTimeMillis() - publishedMs) / 3_600_000L).toInt()
-        return if (hours in 0..11) "${hours}h ago" else "Popular"
-    }
 }
