@@ -3,8 +3,6 @@ package com.digitalturbine.promptnews.ui.home
 import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -18,26 +16,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -53,7 +41,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -72,7 +59,6 @@ fun HomeScreen(onSearch: (String) -> Unit) {
     val scope = rememberCoroutineScope()
     val prefs = remember { HomePrefs.getPrefs(ctx) }
 
-    var top by remember { mutableStateOf<List<Article>>(emptyList()) }
     var local by remember { mutableStateOf<List<Article>>(emptyList()) }
     var location by remember { mutableStateOf(HomePrefs.getLocation(ctx)) }
 
@@ -86,12 +72,6 @@ fun HomeScreen(onSearch: (String) -> Unit) {
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
-    LaunchedEffect(Unit) {
-        scope.launch {
-            top = runCatching { Services.fetchFsArticles("top news", limit = 5) }.getOrDefault(emptyList())
-        }
-    }
-
     LaunchedEffect(location) {
         if (location.isNotBlank()) {
             val query = "$location news"
@@ -103,9 +83,6 @@ fun HomeScreen(onSearch: (String) -> Unit) {
         }
     }
 
-    val heroTop = top.firstOrNull()
-    val listTop = top.drop(1).take(4)
-
     val heroLocal = local.firstOrNull()
     val listLocal = local.drop(1).take(6)
 
@@ -116,50 +93,9 @@ fun HomeScreen(onSearch: (String) -> Unit) {
             .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(bottom = 88.dp)
     ) {
-        item {
-            TrendingChipsRow(
-                topics = listOf(
-                    "A.I.", "Taylor Swift", "NFL", "Space X",
-                    "Bitcoin", "K-Pop", "NBA trade rumors",
-                    "U.S. election", "Weather radar", "Fortnite"
-                ),
-                onTopicClick = { q -> onSearch(q) }
-            )
-        }
-
-        item {
-            Surface(tonalElevation = 4.dp) {
-                SearchHeader { q -> onSearch(q) }
-            }
-        }
-
-        if (heroTop != null) {
-            item { SectionTitle("Top Stories") }
-            item {
-                val badgeLabel = heroTop.interest
-                    .takeIf { it.isNotBlank() }
-                    ?.replaceFirstChar { it.uppercase() }
-                    ?: defaultBadge
-                HeroCard(
-                    article = heroTop,
-                    badgeLabel = badgeLabel,
-                    badgeColor = badgeColorFor(badgeLabel)
-                ) { openArticle(ctx, heroTop.url) }
-            }
-        }
-        itemsIndexed(listTop, key = { index, art -> "${art.url}-$index" }) { index, art ->
-            NewsRowCard(
-                article = art,
-                badgeLabel = defaultBadge,
-                badgeColor = badgeColorFor(defaultBadge),
-                showDivider = index != listTop.lastIndex,
-                onClick = { openArticle(ctx, art.url) }
-            )
-        }
-
         if (location.isNotBlank() && heroLocal != null) {
             item { Spacer(Modifier.height(16.dp)) }
-            item { SectionTitle("Local News • $location") }
+            item { LocalNewsHeader(location = location) }
             item {
                 HeroCard(
                     article = heroLocal,
@@ -183,81 +119,19 @@ fun HomeScreen(onSearch: (String) -> Unit) {
 }
 
 @Composable
-private fun TrendingChipsRow(
-    topics: List<String>,
-    onTopicClick: (String) -> Unit
-) {
-    val chipRed = Color(0xFFE53935)
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp)
-    ) {
+private fun LocalNewsHeader(location: String) {
+    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
         Text(
-            text = "Trending search topics",
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+            text = "Local News",
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
         )
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(topics) { t ->
-                AssistChip(
-                    onClick = { onTopicClick(t) },
-                    label = { Text(t) },
-                    shape = RoundedCornerShape(24.dp),
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = chipRed,
-                        labelColor = Color.White
-                    )
-                )
-            }
+        if (location.isNotBlank()) {
+            Text(
+                text = location,
+                style = MaterialTheme.typography.titleMedium.copy(color = Color.Gray)
+            )
         }
     }
-}
-
-@Composable
-private fun SearchHeader(onSearch: (String) -> Unit) {
-    var q by remember { mutableStateOf("") }
-    Surface(Modifier.fillMaxWidth(), tonalElevation = 0.dp) {
-        TextField(
-            value = q,
-            onValueChange = { q = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .height(54.dp),
-            placeholder = { Text("search") },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            singleLine = true,
-            shape = RoundedCornerShape(20.dp),
-            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(
-                onSearch = {
-                    val s = q.trim()
-                    if (s.isNotEmpty()) onSearch(s)
-                }
-            ),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color(0xFFF1EEF4),
-                unfocusedContainerColor = Color(0xFFF1EEF4),
-                disabledContainerColor = Color(0xFFF1EEF4),
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
-            ),
-            textStyle = MaterialTheme.typography.titleMedium
-        )
-    }
-}
-
-@Composable
-private fun SectionTitle(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
-    )
 }
 
 @Composable
