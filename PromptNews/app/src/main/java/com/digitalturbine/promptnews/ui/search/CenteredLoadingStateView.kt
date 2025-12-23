@@ -10,10 +10,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,7 +52,7 @@ fun CenteredLoadingStateView(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .padding(WindowInsets.systemBars.asPaddingValues()),
+                .systemBarsPadding(),
             contentAlignment = Alignment.Center
         ) {
             Text(
