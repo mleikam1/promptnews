@@ -182,33 +182,6 @@ fun SearchScreen(
                         Spacer(Modifier.height(16.dp))
                     }
                     item {
-                        // Trending chips (fade out on search)
-                        AnimatedVisibility(
-                            visible = ui is SearchUi.Idle,
-                            enter = fadeIn(),
-                            exit = fadeOut()
-                        ) {
-                            Column {
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    chips.forEach { c ->
-                                        AssistChip(
-                                            onClick = { runChipSearch(c) },
-                                            label = { Text(c) },
-                                            shape = RoundedCornerShape(22.dp),
-                                            colors = AssistChipDefaults.assistChipColors(
-                                                containerColor = MaterialTheme.colorScheme.primary,
-                                                labelColor = MaterialTheme.colorScheme.onPrimary
-                                            )
-                                        )
-                                    }
-                                }
-                                Spacer(Modifier.height(16.dp))
-                            }
-                        }
-
                         // “Finding …”
                         AnimatedVisibility(
                             visible = ui is SearchUi.Searching,
@@ -226,145 +199,151 @@ fun SearchScreen(
 
                     when (val s = ui) {
                         is SearchUi.Ready -> {
-                    // Hero
-                    s.hero?.let { hero ->
-                        item {
-                            HeroCard(hero) { openArticle(hero.url) }
-                            Spacer(Modifier.height(8.dp))
-                        }
-                    }
-                    // list
-                    items(s.rows) { a ->
-                        RowCard(a, onClick = { openArticle(a.url) })
-                        HorizontalDivider(thickness = 0.5.dp)
-                    }
-
-                    // More button
-                    item {
-                        Spacer(Modifier.height(10.dp))
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            OutlinedButton(
-                                onClick = { vm.loadMore() },
-                                enabled = s.hasMore,
-                                shape = RoundedCornerShape(24.dp)
-                            ) { Text(if (s.hasMore) "More" else "No more") }
-                        }
-                        Spacer(Modifier.height(10.dp))
-                    }
-
-                    // Clips rail
-                    if (s.clips.isNotEmpty()) {
-                        item {
-                            Text(
-                                "Clips",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                            Spacer(Modifier.height(8.dp))
-                        }
-                        item {
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                items(s.clips) { c -> ClipCard(c) { openArticle(c.url) } }
-                            }
-                            Spacer(Modifier.height(16.dp))
-                        }
-                    }
-
-                    // Images rail
-                    if (s.images.isNotEmpty()) {
-                        item {
-                            Text("Images", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
-                        }
-                        item {
-                            Spacer(Modifier.height(8.dp))
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                items(s.images) { u ->
-                                    AsyncImage(
-                                        model = u,
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .size(110.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .clickable { openArticle(u) }
-                                    )
+                            // Hero
+                            s.hero?.let { hero ->
+                                item {
+                                    HeroCard(hero) { openArticle(hero.url) }
+                                    Spacer(Modifier.height(8.dp))
                                 }
                             }
-                            Spacer(Modifier.height(18.dp))
-                        }
-                    }
+                            // list
+                            items(s.rows) { a ->
+                                RowCard(a, onClick = { openArticle(a.url) })
+                                HorizontalDivider(thickness = 0.5.dp)
+                            }
 
-                    // Dive deeper
-                    item {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            Text(
-                                "Want to Dive Deeper On this?",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                        }
-                        Spacer(Modifier.height(10.dp))
-                        Text(
-                            "People also ask",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                        Spacer(Modifier.height(8.dp))
-                    }
-                    items(s.extras.peopleAlsoAsk) { q ->
-                        ElevatedCard(
-                            onClick = { runSearchFromInput(q) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Row(
-                                Modifier.padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(q, modifier = Modifier.weight(1f))
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null
+                            // More button
+                            item {
+                                Spacer(Modifier.height(10.dp))
+                                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    OutlinedButton(
+                                        onClick = { vm.loadMore() },
+                                        enabled = s.hasMore,
+                                        shape = RoundedCornerShape(24.dp)
+                                    ) { Text(if (s.hasMore) "More" else "No more") }
+                                }
+                                Spacer(Modifier.height(10.dp))
+                            }
+
+                            // Clips rail
+                            if (s.clips.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        "Clips",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                }
+                                item {
+                                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        items(s.clips) { c -> ClipCard(c) { openArticle(c.url) } }
+                                    }
+                                    Spacer(Modifier.height(16.dp))
+                                }
+                            }
+
+                            // Images rail
+                            if (s.images.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        "Images",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
+                                item {
+                                    Spacer(Modifier.height(8.dp))
+                                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        items(s.images) { u ->
+                                            AsyncImage(
+                                                model = u,
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .size(110.dp)
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .clickable { openArticle(u) }
+                                            )
+                                        }
+                                    }
+                                    Spacer(Modifier.height(18.dp))
+                                }
+                            }
+
+                            // Dive deeper
+                            item {
+                                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    Text(
+                                        "Want to Dive Deeper On this?",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
+                                Spacer(Modifier.height(10.dp))
+                                Text(
+                                    "People also ask",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold
                                 )
+                                Spacer(Modifier.height(8.dp))
                             }
-                        }
-                        Spacer(Modifier.height(8.dp))
-                    }
-
-                    // Similar searches chips
-                    if (s.extras.relatedSearches.isNotEmpty()) {
-                        item {
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                "Similar searches",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                            Spacer(Modifier.height(8.dp))
-                        }
-                        item {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                s.extras.relatedSearches.forEach { chip ->
-                                    AssistChip(
-                                        onClick = { runChipSearch(chip) },
-                                        label = { Text(chip) },
-                                        shape = RoundedCornerShape(16.dp),
-                                        colors = AssistChipDefaults.assistChipColors(
-                                            containerColor = Color(0xFFF0ECF2)
+                            items(s.extras.peopleAlsoAsk) { q ->
+                                ElevatedCard(
+                                    onClick = { runSearchFromInput(q) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Row(
+                                        Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(q, modifier = Modifier.weight(1f))
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.ArrowForward,
+                                            contentDescription = null
                                         )
+                                    }
+                                }
+                                Spacer(Modifier.height(8.dp))
+                            }
+
+                            // Similar searches chips
+                            if (s.extras.relatedSearches.isNotEmpty()) {
+                                item {
+                                    Spacer(Modifier.height(6.dp))
+                                    Text(
+                                        "Similar searches",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold
                                     )
+                                    Spacer(Modifier.height(8.dp))
+                                }
+                                item {
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        s.extras.relatedSearches.forEach { chip ->
+                                            AssistChip(
+                                                onClick = { runChipSearch(chip) },
+                                                label = { Text(chip) },
+                                                shape = RoundedCornerShape(16.dp),
+                                                colors = AssistChipDefaults.assistChipColors(
+                                                    containerColor = Color(0xFFF0ECF2)
+                                                )
+                                            )
+                                        }
+                                    }
+                                    Spacer(Modifier.height(16.dp))
                                 }
                             }
-                            Spacer(Modifier.height(16.dp))
                         }
-                    }
-                }
+                        is SearchUi.Error -> {
+                            item { Text("Error: ${s.message}") }
                         }
-                        is SearchUi.Error -> item { Text("Error: ${s.message}") }
-                        else -> {}
+                        is SearchUi.Searching,
+                        is SearchUi.Idle -> Unit
                     }
                 }
             }
@@ -469,9 +448,9 @@ private fun HeroCard(article: Article, onClick: () -> Unit) {
                         .size(18.dp)
                         .clip(CircleShape)
                 )
-                if (!article.ageLabel.isNullOrBlank()) {
+                article.ageLabel?.let { ageLabel ->
                     Spacer(Modifier.width(6.dp))
-                    Text(article.ageLabel!!, color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(ageLabel, color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
             Text(
@@ -519,10 +498,10 @@ private fun RowCard(a: Article, onClick: () -> Unit) {
                         .size(16.dp)
                         .clip(CircleShape)
                 )
-                if (!a.sourceName.isNullOrBlank()) {
+                a.sourceName?.let { sourceName ->
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        a.sourceName!!,
+                        sourceName,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelMedium,
@@ -538,9 +517,9 @@ private fun RowCard(a: Article, onClick: () -> Unit) {
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-            if (!a.ageLabel.isNullOrBlank()) {
+            a.ageLabel?.let { ageLabel ->
                 Spacer(Modifier.height(4.dp))
-                Text(a.ageLabel!!, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Text(ageLabel, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             }
         }
         Spacer(Modifier.width(16.dp))
