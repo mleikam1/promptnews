@@ -1,9 +1,6 @@
 package com.digitalturbine.promptnews.ui.search
 
 import android.content.Intent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -198,19 +195,7 @@ fun SearchScreen(
                         Spacer(Modifier.height(12.dp))
                     }
                     item {
-                        // “Finding …”
-                        AnimatedVisibility(
-                            visible = ui is SearchUi.Searching,
-                            enter = fadeIn(),
-                            exit = fadeOut()
-                        ) {
-                            Text(
-                                "Finding News and Information for “$lastQuery”",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
-                        }
+                        Spacer(Modifier.height(8.dp))
                     }
 
                     when (val s = ui) {
@@ -377,6 +362,10 @@ fun SearchScreen(
                         .heightIn(min = 46.dp)
                 )
             }
+            CenteredLoadingStateView(
+                query = lastQuery,
+                isLoading = ui is SearchUi.Searching
+            )
         }
     }
 }
