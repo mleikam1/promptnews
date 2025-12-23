@@ -9,6 +9,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
@@ -99,22 +101,58 @@ fun SearchScreen(
     }
 
     val chips = listOf(
-        "Taylor Swift",
-        "A.I.",
-        "VMAs",
-        "Space X",
-        "NFL",
-        "Bitcoin",
-        "iPhone Air",
-        "iPhone 17",
-        "Avengers: Doomsday",
-        "Superman",
-        "DCU",
-        "Beyonce",
-        "Weather Radar",
-        "K-Pop Demon Hunters",
-        "Fortnite",
-        "U.S. Open"
+        ChipRowData(
+            title = "Trending & Live",
+            chips = listOf(
+                "Taylor Swift",
+                "NCAA Football Playoffs",
+                "NFL Playoffs",
+                "Gaza Conflict",
+                "Student Loan Updates",
+                "AI Layoffs",
+                "Supreme Court Ruling"
+            )
+        ),
+        ChipRowData(
+            title = "News & Current Affairs",
+            chips = listOf(
+                "Top Stories",
+                "Politics",
+                "World News",
+                "Business",
+                "Technology",
+                "Climate",
+                "Education",
+                "Health"
+            )
+        ),
+        ChipRowData(
+            title = "Sports",
+            chips = listOf(
+                "NFL",
+                "NBA",
+                "NCAA Football",
+                "MLB",
+                "Soccer",
+                "UFC",
+                "Formula 1",
+                "Olympics"
+            )
+        ),
+        ChipRowData(
+            title = "Explore More",
+            chips = listOf(
+                "Space",
+                "Travel",
+                "Inflation",
+                "Mortgage Rates",
+                "Fitness",
+                "Food",
+                "Relationships",
+                "Fashion",
+                "Robotics"
+            )
+        )
     )
 
     Scaffold { padding ->
@@ -128,30 +166,10 @@ fun SearchScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp)
+                        .verticalScroll(rememberScrollState())
                 ) {
                     TopBar()
-                    Spacer(Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier.weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            chips.forEach { c ->
-                                AssistChip(
-                                    onClick = { runChipSearch(c) },
-                                    label = { Text(c) },
-                                    shape = RoundedCornerShape(22.dp),
-                                    colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        labelColor = MaterialTheme.colorScheme.onPrimary
-                                    )
-                                )
-                            }
-                        }
-                    }
+                    Spacer(Modifier.height(16.dp))
                     SearchInputField(
                         text = text,
                         onValueChange = { text = it },
@@ -159,8 +177,19 @@ fun SearchScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 46.dp)
-                            .padding(bottom = 20.dp)
                     )
+                    Spacer(Modifier.height(20.dp))
+                    chips.forEachIndexed { index, row ->
+                        ChipRow(
+                            title = row.title,
+                            chips = row.chips,
+                            onChipSelected = { runChipSearch(it) }
+                        )
+                        if (index != chips.lastIndex) {
+                            Spacer(Modifier.height(16.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(24.dp))
                 }
             } else {
                 LazyColumn(
@@ -346,6 +375,44 @@ fun SearchScreen(
                         is SearchUi.Searching -> Unit
                     }
                 }
+            }
+        }
+    }
+}
+
+private data class ChipRowData(
+    val title: String,
+    val chips: List<String>
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChipRow(
+    title: String,
+    chips: List<String>,
+    onChipSelected: (String) -> Unit
+) {
+    Column {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.ExtraBold
+        )
+        Spacer(Modifier.height(10.dp))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp)
+        ) {
+            items(chips) { chip ->
+                AssistChip(
+                    onClick = { onChipSelected(chip) },
+                    label = { Text(chip) },
+                    shape = RoundedCornerShape(20.dp),
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        labelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
             }
         }
     }
