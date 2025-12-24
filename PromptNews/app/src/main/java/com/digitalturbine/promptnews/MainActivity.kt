@@ -13,6 +13,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Edit
@@ -27,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -36,8 +36,10 @@ import androidx.navigation.navArgument
 import com.digitalturbine.promptnews.ui.home.HomeScreen
 import com.digitalturbine.promptnews.ui.history.HistoryScreen
 import com.digitalturbine.promptnews.ui.search.SearchScreen
+import com.digitalturbine.promptnews.ui.search.SearchScreenState
 import com.digitalturbine.promptnews.util.HomePrefs
 import com.digitalturbine.promptnews.data.history.HistoryRepository
+import com.digitalturbine.promptnews.data.history.HistoryType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -83,6 +85,19 @@ class MainActivity : ComponentActivity() {
                 }
 
                 Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = { Text("PromptNews") },
+                            actions = {
+                                IconButton(onClick = {}) {
+                                    Icon(
+                                        imageVector = Icons.Filled.AccountCircle,
+                                        contentDescription = "Profile"
+                                    )
+                                }
+                            }
+                        )
+                    },
                     bottomBar = {
                         NavigationBar {
                             val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -100,13 +115,12 @@ class MainActivity : ComponentActivity() {
                                         if (!isGraphReady) {
                                             return@NavigationBarItem
                                         }
-                                        val startId = navController.safeStartDestinationId()
-                                        navController.navigate(dest.route) {
-                                            launchSingleTop = true
-                                            restoreState = true
-                                            if (startId != null) {
-                                                popUpTo(startId) { saveState = true }
-                                            }
+                                        if (currentDestination?.route?.startsWith(dest.route) == true) {
+                                            return@NavigationBarItem
+                                        }
+                                        // Keep the existing back stack intact when switching tabs.
+                                        if (!navController.popBackStack(dest.route, inclusive = false)) {
+                                            navController.navigate(dest.route) { launchSingleTop = true }
                                         }
                                     },
                                     icon = { Icon(dest.icon, contentDescription = dest.label) },
@@ -130,7 +144,29 @@ class MainActivity : ComponentActivity() {
                         ) { backStackEntry ->
                             SearchScreen(
                                 initialQuery = backStackEntry.arguments?.getString("query"),
-                                initialSource = backStackEntry.arguments?.getString("source")
+                                initialSource = backStackEntry.arguments?.getString("source"),
+                                screenState = SearchScreenState.Prompt,
+                                onSearchRequested = { query, source ->
+                                    // Push results onto the back stack so back returns to prompt.
+                                    navController.navigate(Dest.SearchResults.routeFor(query, source))
+                                }
+                            )
+                        }
+                        composable(
+                            route = "${Dest.SearchResults.route}?query={query}&source={source}",
+                            arguments = listOf(
+                                navArgument("query") { defaultValue = "" },
+                                navArgument("source") { defaultValue = "" }
+                            )
+                        ) { backStackEntry ->
+                            SearchScreen(
+                                initialQuery = backStackEntry.arguments?.getString("query"),
+                                initialSource = backStackEntry.arguments?.getString("source"),
+                                screenState = SearchScreenState.Results,
+                                onSearchRequested = { query, source ->
+                                    // Each follow-up prompt creates its own results entry.
+                                    navController.navigate(Dest.SearchResults.routeFor(query, source))
+                                }
                             )
                         }
                         composable(Dest.Home.route) {
@@ -138,16 +174,8 @@ class MainActivity : ComponentActivity() {
                                 if (!isGraphReady) {
                                     return@HomeScreen
                                 }
-                                val startId = navController.safeStartDestinationId()
-                                navController.navigate(
-                                    "${Dest.Search.route}?query=${Uri.encode(query)}&source=SEARCH"
-                                ) {
-                                    launchSingleTop = true
-                                    restoreState = true
-                                    if (startId != null) {
-                                        popUpTo(startId) { saveState = true }
-                                    }
-                                }
+                                // Home searches should feel like forward navigation into results.
+                                navController.navigate(Dest.SearchResults.routeFor(query, HistoryType.SEARCH))
                             }
                         }
                         composable(Dest.History.route) {
@@ -155,16 +183,10 @@ class MainActivity : ComponentActivity() {
                                 if (!isGraphReady) {
                                     return@HistoryScreen
                                 }
-                                val startId = navController.safeStartDestinationId()
+                                // History taps should navigate forward and preserve back behavior.
                                 navController.navigate(
-                                    "${Dest.Search.route}?query=${Uri.encode(entry.label)}&source=${entry.type.name}"
-                                ) {
-                                    launchSingleTop = true
-                                    restoreState = true
-                                    if (startId != null) {
-                                        popUpTo(startId) { saveState = true }
-                                    }
-                                }
+                                    Dest.SearchResults.routeFor(entry.label, entry.type)
+                                )
                             })
                         }
                     }
@@ -253,9 +275,9 @@ private sealed class Dest(val route: String, val label: String, val icon: ImageV
     data object Search : Dest("tab_search", "Prompt", Icons.Filled.Edit)
     data object Home : Dest("tab_home", "Home", Icons.Filled.Home)
     data object History : Dest("tab_history", "History", Icons.Filled.History)
-}
-
-private fun NavController.safeStartDestinationId(): Int? {
-    val id = graph.startDestinationId
-    return if (id != 0) id else null
+    data object SearchResults : Dest("tab_search_results", "Results", Icons.Filled.Edit) {
+        fun routeFor(query: String, source: HistoryType): String {
+            return "$route?query=${Uri.encode(query)}&source=${source.name}"
+        }
+    }
 }
