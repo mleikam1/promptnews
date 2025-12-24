@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,11 +42,18 @@ import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import kotlinx.coroutines.launch
 
+enum class SearchScreenState {
+    Prompt,
+    Results
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SearchScreen(
     initialQuery: String? = null,
     initialSource: String? = null,
+    screenState: SearchScreenState,
+    onSearchRequested: (String, HistoryType) -> Unit,
     vm: SearchViewModel = viewModel()
 ) {
     val ui by vm.ui.collectAsState()
@@ -73,10 +79,14 @@ fun SearchScreen(
         }
     }
     fun runSearchFromInput(q: String) {
-        runSearch(q, HistoryType.SEARCH, true)
+        val trimmed = q.trim()
+        if (trimmed.isBlank()) return
+        onSearchRequested(trimmed, HistoryType.SEARCH)
     }
     fun runChipSearch(q: String) {
-        runSearch(q, HistoryType.CHIP, true)
+        val trimmed = q.trim()
+        if (trimmed.isBlank()) return
+        onSearchRequested(trimmed, HistoryType.CHIP)
     }
 
     LaunchedEffect(ui) {
@@ -154,200 +164,199 @@ fun SearchScreen(
 
     val searchBarBottomPadding = 25.dp
     val searchBarContentPadding = 96.dp
+    val contentBottomPadding = if (screenState == SearchScreenState.Prompt) {
+        searchBarContentPadding
+    } else {
+        12.dp
+    }
 
-    Scaffold { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            if (ui is SearchUi.Idle) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = searchBarContentPadding)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    TopBar()
-                    Spacer(Modifier.height(16.dp))
-                    chips.forEachIndexed { index, row ->
-                        ChipRow(
-                            title = row.title,
-                            chips = row.chips,
-                            onChipSelected = { runChipSearch(it) }
-                        )
-                        if (index != chips.lastIndex) {
-                            Spacer(Modifier.height(16.dp))
-                        }
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (ui is SearchUi.Idle && screenState == SearchScreenState.Prompt) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = contentBottomPadding)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Spacer(Modifier.height(16.dp))
+                chips.forEachIndexed { index, row ->
+                    ChipRow(
+                        title = row.title,
+                        chips = row.chips,
+                        onChipSelected = { runChipSearch(it) }
+                    )
+                    if (index != chips.lastIndex) {
+                        Spacer(Modifier.height(16.dp))
                     }
-                    Spacer(Modifier.height(24.dp))
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    contentPadding = PaddingValues(bottom = searchBarContentPadding)
-                ) {
-                    item {
-                        TopBar()
-                        Spacer(Modifier.height(12.dp))
-                    }
-                    item {
-                        Spacer(Modifier.height(8.dp))
-                    }
+                Spacer(Modifier.height(24.dp))
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(bottom = contentBottomPadding)
+            ) {
+                item {
+                    Spacer(Modifier.height(12.dp))
+                }
+                item {
+                    Spacer(Modifier.height(8.dp))
+                }
 
-                    when (val s = ui) {
-                        is SearchUi.Ready -> {
-                            // Hero
-                            s.hero?.let { hero ->
-                                item {
-                                    HeroCard(hero) { openArticle(hero.url) }
-                                    Spacer(Modifier.height(8.dp))
-                                }
-                            }
-                            // list
-                            items(s.rows) { a ->
-                                RowCard(a, onClick = { openArticle(a.url) })
-                                HorizontalDivider(thickness = 0.5.dp)
-                            }
-
-                            // More button
+                when (val s = ui) {
+                    is SearchUi.Ready -> {
+                        // Hero
+                        s.hero?.let { hero ->
                             item {
-                                Spacer(Modifier.height(10.dp))
-                                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    OutlinedButton(
-                                        onClick = { vm.loadMore() },
-                                        enabled = s.hasMore,
-                                        shape = RoundedCornerShape(24.dp)
-                                    ) { Text(if (s.hasMore) "More" else "No more") }
-                                }
-                                Spacer(Modifier.height(10.dp))
+                                HeroCard(hero) { openArticle(hero.url) }
+                                Spacer(Modifier.height(8.dp))
                             }
+                        }
+                        // list
+                        items(s.rows) { a ->
+                            RowCard(a, onClick = { openArticle(a.url) })
+                            HorizontalDivider(thickness = 0.5.dp)
+                        }
 
-                            // Clips rail
-                            if (s.clips.isNotEmpty()) {
-                                item {
-                                    Text(
-                                        "Clips",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
-                                    Spacer(Modifier.height(8.dp))
-                                }
-                                item {
-                                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        items(s.clips) { c -> ClipCard(c) { openArticle(c.url) } }
-                                    }
-                                    Spacer(Modifier.height(16.dp))
-                                }
+                        // More button
+                        item {
+                            Spacer(Modifier.height(10.dp))
+                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                OutlinedButton(
+                                    onClick = { vm.loadMore() },
+                                    enabled = s.hasMore,
+                                    shape = RoundedCornerShape(24.dp)
+                                ) { Text(if (s.hasMore) "More" else "No more") }
                             }
+                            Spacer(Modifier.height(10.dp))
+                        }
 
-                            // Images rail
-                            if (s.images.isNotEmpty()) {
-                                item {
-                                    Text(
-                                        "Images",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
-                                }
-                                item {
-                                    Spacer(Modifier.height(8.dp))
-                                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        items(s.images) { u ->
-                                            AsyncImage(
-                                                model = u,
-                                                contentDescription = null,
-                                                contentScale = ContentScale.Crop,
-                                                modifier = Modifier
-                                                    .size(110.dp)
-                                                    .clip(RoundedCornerShape(12.dp))
-                                                    .clickable { openArticle(u) }
-                                            )
-                                        }
-                                    }
-                                    Spacer(Modifier.height(18.dp))
-                                }
-                            }
-
-                            // Dive deeper
+                        // Clips rail
+                        if (s.clips.isNotEmpty()) {
                             item {
-                                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    Text(
-                                        "Want to Dive Deeper On this?",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
-                                }
-                                Spacer(Modifier.height(10.dp))
                                 Text(
-                                    "People also ask",
+                                    "Clips",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.ExtraBold
                                 )
                                 Spacer(Modifier.height(8.dp))
                             }
-                            items(s.extras.peopleAlsoAsk) { q ->
-                                ElevatedCard(
-                                    onClick = { runSearchFromInput(q) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(16.dp)
-                                ) {
-                                    Row(
-                                        Modifier.padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(q, modifier = Modifier.weight(1f))
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.ArrowForward,
-                                            contentDescription = null
+                            item {
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    items(s.clips) { c -> ClipCard(c) { openArticle(c.url) } }
+                                }
+                                Spacer(Modifier.height(16.dp))
+                            }
+                        }
+
+                        // Images rail
+                        if (s.images.isNotEmpty()) {
+                            item {
+                                Text(
+                                    "Images",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            }
+                            item {
+                                Spacer(Modifier.height(8.dp))
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    items(s.images) { u ->
+                                        AsyncImage(
+                                            model = u,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .size(110.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .clickable { openArticle(u) }
                                         )
                                     }
                                 }
+                                Spacer(Modifier.height(18.dp))
+                            }
+                        }
+
+                        // Dive deeper
+                        item {
+                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                Text(
+                                    "Want to Dive Deeper On this?",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            Text(
+                                "People also ask",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+                        items(s.extras.peopleAlsoAsk) { q ->
+                            ElevatedCard(
+                                onClick = { runSearchFromInput(q) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Row(
+                                    Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(q, modifier = Modifier.weight(1f))
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowForward,
+                                        contentDescription = null
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                        }
+
+                        // Similar searches chips
+                        if (s.extras.relatedSearches.isNotEmpty()) {
+                            item {
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    "Similar searches",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
                                 Spacer(Modifier.height(8.dp))
                             }
-
-                            // Similar searches chips
-                            if (s.extras.relatedSearches.isNotEmpty()) {
-                                item {
-                                    Spacer(Modifier.height(6.dp))
-                                    Text(
-                                        "Similar searches",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
-                                    Spacer(Modifier.height(8.dp))
-                                }
-                                item {
-                                    FlowRow(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        s.extras.relatedSearches.forEach { chip ->
-                                            AssistChip(
-                                                onClick = { runChipSearch(chip) },
-                                                label = { Text(chip) },
-                                                shape = RoundedCornerShape(16.dp),
-                                                colors = AssistChipDefaults.assistChipColors(
-                                                    containerColor = Color(0xFFF0ECF2)
-                                                )
+                            item {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    s.extras.relatedSearches.forEach { chip ->
+                                        AssistChip(
+                                            onClick = { runChipSearch(chip) },
+                                            label = { Text(chip) },
+                                            shape = RoundedCornerShape(16.dp),
+                                            colors = AssistChipDefaults.assistChipColors(
+                                                containerColor = Color(0xFFF0ECF2)
                                             )
-                                        }
+                                        )
                                     }
-                                    Spacer(Modifier.height(16.dp))
                                 }
+                                Spacer(Modifier.height(16.dp))
                             }
                         }
-                        is SearchUi.Error -> {
-                            item { Text("Error: ${s.message}") }
-                        }
-                        is SearchUi.Idle -> Unit
-                        is SearchUi.Searching -> Unit
                     }
+                    is SearchUi.Error -> {
+                        item { Text("Error: ${s.message}") }
+                    }
+                    is SearchUi.Idle -> Unit
+                    is SearchUi.Searching -> Unit
                 }
             }
+        }
+        if (screenState == SearchScreenState.Prompt) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -362,11 +371,11 @@ fun SearchScreen(
                         .heightIn(min = 46.dp)
                 )
             }
-            CenteredLoadingStateView(
-                query = lastQuery,
-                isLoading = ui is SearchUi.Searching
-            )
         }
+        CenteredLoadingStateView(
+            query = lastQuery,
+            isLoading = ui is SearchUi.Searching
+        )
     }
 }
 
@@ -404,29 +413,6 @@ private fun ChipRow(
                     )
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun TopBar() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            "PromptNews",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-        IconButton(onClick = {}) {
-            Icon(
-                imageVector = Icons.Filled.AccountCircle,
-                contentDescription = "Profile"
-            )
         }
     }
 }
