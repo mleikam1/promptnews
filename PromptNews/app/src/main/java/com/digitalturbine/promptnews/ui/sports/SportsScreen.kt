@@ -74,6 +74,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardActions
+import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -129,7 +132,7 @@ fun SportsSearchScreen(
         selectedFilter = selectedFilter,
         onQueryChange = { query = it },
         onFilterSelected = { selectedFilter = it },
-        onSearch = { vm.search(it) }
+        onSearch = { vm.search(it, selectedFilter) }
     )
 }
 
@@ -177,20 +180,24 @@ internal fun SportsScreenContent(
                 fontWeight = FontWeight.ExtraBold
             )
             Spacer(Modifier.height(12.dp))
-            TextField(
-                value = query,
-                onValueChange = onQueryChange,
-                placeholder = { Text("Search for a team or sport") },
-                leadingIcon = {
-                    IconButton(onClick = { onSearch(query) }) {
-                        Icon(Icons.Filled.SportsSoccer, contentDescription = null)
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 52.dp),
+                TextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    placeholder = { Text("Search for a team or sport") },
+                    leadingIcon = {
+                        IconButton(onClick = { onSearch(query) }) {
+                            Icon(Icons.Filled.SportsSoccer, contentDescription = null)
+                        }
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(
+                        onSearch = { onSearch(query) }
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 52.dp),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -264,6 +271,11 @@ internal fun SportsScreenContent(
             is SportsUiState.Error -> {
                 item {
                     ErrorState(message = state.message)
+                }
+            }
+            is SportsUiState.NoResults -> {
+                item {
+                    NoResultsState()
                 }
             }
             is SportsUiState.Ready -> {
@@ -343,6 +355,23 @@ private fun ErrorState(message: String) {
         Text(text = "Unable to load sports results.", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
         Text(text = message, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun NoResultsState() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = "No results found.", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "Try another team or adjust the filter.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
