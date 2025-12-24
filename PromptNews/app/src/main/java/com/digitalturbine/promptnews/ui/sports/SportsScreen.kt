@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -358,31 +357,37 @@ private fun TeamOverviewCard(results: SportsResults, accent: Color) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            AsyncImage(
-                model = overview?.thumbnail,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = overview?.title ?: "Team overview",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(0.7f)
+            ) {
+                AsyncImage(
+                    model = overview?.thumbnail,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                 )
-                overview?.ranking?.let {
-                    Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.width(12.dp))
+                Column {
                     Text(
-                        text = "Ranking: $it",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = overview?.title ?: "Team overview",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
                     )
+                    overview?.ranking?.let {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "Ranking: $it",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
@@ -435,10 +440,22 @@ private fun LiveMatchHero(game: SportsGame, accent: Color) {
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TeamScoreBlock(team = game.teams.firstOrNull(), accent = accent)
-                Spacer(Modifier.width(12.dp))
-                TeamScoreBlock(team = game.teams.getOrNull(1), accent = accent, alignEnd = true)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                TeamScoreBlock(
+                    team = game.teams.firstOrNull(),
+                    accent = accent,
+                    modifier = Modifier.fillMaxWidth(0.48f)
+                )
+                TeamScoreBlock(
+                    team = game.teams.getOrNull(1),
+                    accent = accent,
+                    alignEnd = true,
+                    modifier = Modifier.fillMaxWidth(0.48f)
+                )
             }
             Spacer(Modifier.height(12.dp))
             Text(
@@ -457,9 +474,14 @@ private fun LiveMatchHero(game: SportsGame, accent: Color) {
 }
 
 @Composable
-private fun TeamScoreBlock(team: SportsTeam?, accent: Color, alignEnd: Boolean = false) {
+private fun TeamScoreBlock(
+    team: SportsTeam?,
+    accent: Color,
+    alignEnd: Boolean = false,
+    modifier: Modifier = Modifier
+) {
     Column(
-        modifier = Modifier.weight(1f),
+        modifier = modifier,
         horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -533,7 +555,11 @@ private fun GameCard(game: SportsGame, accent: Color, onClick: () -> Unit) {
         modifier = Modifier.width(240.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Surface(
                     color = accent.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(12.dp)
@@ -544,7 +570,6 @@ private fun GameCard(game: SportsGame, accent: Color, onClick: () -> Unit) {
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
-                Spacer(Modifier.weight(1f))
                 Text(
                     text = listOfNotNull(game.date, game.time).joinToString(" • "),
                     style = MaterialTheme.typography.labelSmall,
@@ -575,20 +600,28 @@ private fun GameCard(game: SportsGame, accent: Color, onClick: () -> Unit) {
 @Composable
 private fun GameTeamsRow(teams: List<SportsTeam>) {
     teams.take(2).forEachIndexed { index, team ->
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter = rememberAsyncImagePainter(team.thumbnail),
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = team.name ?: "TBD",
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.weight(1f))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(0.75f)
+            ) {
+                Image(
+                    painter = rememberAsyncImagePainter(team.thumbnail),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = team.name ?: "TBD",
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             Text(text = team.score ?: "-", style = MaterialTheme.typography.bodyMedium)
         }
         if (index == 0) {
