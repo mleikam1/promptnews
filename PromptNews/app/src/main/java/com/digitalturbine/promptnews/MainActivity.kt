@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.getValue
@@ -38,6 +39,7 @@ import com.digitalturbine.promptnews.ui.home.HomeScreen
 import com.digitalturbine.promptnews.ui.history.HistoryScreen
 import com.digitalturbine.promptnews.ui.search.SearchScreen
 import com.digitalturbine.promptnews.ui.search.SearchScreenState
+import com.digitalturbine.promptnews.ui.sports.SportsSearchScreen
 import com.digitalturbine.promptnews.util.HomePrefs
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
@@ -73,7 +75,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 val navController = rememberNavController()
-                val items = listOf(Dest.Search, Dest.Home, Dest.History)
+                val items = listOf(Dest.Search, Dest.Home, Dest.Sports, Dest.History)
                 var isGraphReady by remember { mutableStateOf(false) }
 
                 // The crash happens when navigate() calls findStartDestination() while the graph
@@ -180,6 +182,9 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate(Dest.SearchResults.routeFor(query, HistoryType.SEARCH))
                             }
                         }
+                        composable(Dest.Sports.route) {
+                            SportsSearchScreen()
+                        }
                         composable(Dest.History.route) {
                             HistoryScreen(onEntrySelected = { entry ->
                                 if (!isGraphReady) {
@@ -276,6 +281,7 @@ class MainActivity : ComponentActivity() {
 private sealed class Dest(val route: String, val label: String, val icon: ImageVector) {
     data object Search : Dest("tab_search", "Prompt", Icons.Filled.Edit)
     data object Home : Dest("tab_home", "Home", Icons.Filled.Home)
+    data object Sports : Dest("tab_sports", "Sports", Icons.Filled.SportsSoccer)
     data object History : Dest("tab_history", "History", Icons.Filled.History)
     data object SearchResults : Dest("tab_search_results", "Results", Icons.Filled.Edit) {
         fun routeFor(query: String, source: HistoryType): String {
