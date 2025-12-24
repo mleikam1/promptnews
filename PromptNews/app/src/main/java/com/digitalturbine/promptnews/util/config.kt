@@ -20,6 +20,9 @@ object Config {
     private const val YT_API_FALLBACK: String =
         "AIzaSyAxxe3jz-SAK7AQE4tCDPv31pMXN6qexg0"
 
+    private const val SPORTS_API_BASE_URL_FALLBACK: String =
+        "http://10.0.2.2:8080"
+
     // ---- Helper: read optional BuildConfig fields safely --------------------
     private fun buildConfigStringOrNull(fieldName: String): String? = runCatching {
         val field = BuildConfig::class.java.getField(fieldName) // may not exist
@@ -34,6 +37,10 @@ object Config {
     /** YouTube Data API key; empty string disables YouTube-backed clips. */
     val youtubeApiKey: String
         get() = buildConfigStringOrNull("YT_API_KEY") ?: YT_API_FALLBACK
+
+    /** Base URL for the Sports backend; empty string disables sports scores. */
+    val sportsApiBaseUrl: String
+        get() = buildConfigStringOrNull("SPORTS_API_BASE_URL") ?: SPORTS_API_BASE_URL_FALLBACK
 
     /** Feature flag: merge SerpAPI YouTube engine results into the Clips rail. */
     const val USE_SERP_FOR_YOUTUBE_BOOST: Boolean = true

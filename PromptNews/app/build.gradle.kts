@@ -21,6 +21,11 @@ android {
             "SERPAPI_KEY",
             "\"${project.findProperty("SERPAPI_KEY") ?: ""}\""
         )
+        buildConfigField(
+            "String",
+            "SPORTS_API_BASE_URL",
+            "\"${project.findProperty("SPORTS_API_BASE_URL") ?: ""}\""
+        )
     }
 
     buildFeatures {
@@ -85,4 +90,8 @@ dependencies {
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")
+
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
