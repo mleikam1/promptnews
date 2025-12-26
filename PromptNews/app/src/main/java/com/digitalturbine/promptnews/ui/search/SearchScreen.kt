@@ -37,10 +37,9 @@ import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
-import coil.compose.rememberAsyncImagePainter
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.Clip
-import com.digitalturbine.promptnews.data.SearchRepository
+import com.digitalturbine.promptnews.data.serpapi.SerpApiImageService
 import com.digitalturbine.promptnews.data.SearchUi
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
@@ -328,7 +327,7 @@ fun SearchScreen(
     } else {
         12.dp
     }
-    val topicImageResolver = remember { TopicImageResolver(SearchRepository()) }
+    val topicImageResolver = remember { TopicImageResolver(SerpApiImageService()) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (ui is SearchUi.Idle && screenState == SearchScreenState.Prompt) {
@@ -572,7 +571,7 @@ private data class TopicImageState(
 )
 
 private class TopicImageResolver(
-    private val repo: SearchRepository
+    private val serpApiImageService: SerpApiImageService
 ) {
     private val cache = mutableMapOf<String, String>()
     private val cacheMutex = Mutex()
@@ -585,7 +584,7 @@ private class TopicImageResolver(
             cache[cacheKey]?.let { return it }
         }
 
-        val serpImage = query?.let { repo.fetchImages(it).firstOrNull() }
+        val serpImage = query?.let { serpApiImageService.fetchFirstImageUrl(it) }
         val resolved = serpImage ?: fallbackFor(topic)
         cacheMutex.withLock {
             cache[cacheKey] = resolved
@@ -601,7 +600,7 @@ private class TopicImageResolver(
             TopicType.SPORTS_TEAM -> if (base.contains("logo", ignoreCase = true)) base else "$base logo"
             TopicType.PLACE -> "$base photo"
             TopicType.EVENT,
-            TopicType.CATEGORY -> base
+            TopicType.CATEGORY -> null
         }
     }
 
@@ -611,7 +610,7 @@ private class TopicImageResolver(
         return when (topic.topicType) {
             TopicType.CATEGORY -> categoryImageUrls[topic.title]
             else -> topicTypeFallbackImages[topic.topicType]
-        } ?: topicTypeFallbackImages.getValue(TopicType.CATEGORY)
+        } ?: genericPlaceholderImage
     }
 }
 
@@ -663,6 +662,9 @@ private val topicTypeFallbackImages = mapOf(
     TopicType.EVENT to "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=800&q=80",
     TopicType.CATEGORY to "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80"
 )
+
+private const val genericPlaceholderImage =
+    "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
