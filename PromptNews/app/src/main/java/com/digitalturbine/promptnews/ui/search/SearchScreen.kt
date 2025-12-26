@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -33,6 +34,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import coil.compose.rememberAsyncImagePainter
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.Clip
@@ -43,10 +47,23 @@ import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 
 enum class SearchScreenState {
     Prompt,
     Results
+}
+
+private enum class TopicType {
+    PERSON,
+    TEAM,
+    PLACE,
+    EVENT,
+    CATEGORY
 }
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
@@ -116,30 +133,34 @@ fun SearchScreen(
                 SearchTopicUiModel(
                     id = "trending-taylor-swift",
                     title = "Taylor Swift",
-                    imageUrl = "https://images.unsplash.com/photo-1454922915609-78549ad709bb?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "Taylor Swift",
-                    badge = "Trending"
+                    badge = "Trending",
+                    topicType = TopicType.PERSON,
+                    entityQuery = "Taylor Swift"
                 ),
                 SearchTopicUiModel(
                     id = "trending-live-scores",
                     title = "Live Scores",
-                    imageUrl = "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "Live Scores",
-                    badge = "Live"
+                    badge = "Live",
+                    topicType = TopicType.EVENT,
+                    entityQuery = "sports scoreboard"
                 ),
                 SearchTopicUiModel(
                     id = "trending-supreme-court",
                     title = "Supreme Court",
-                    imageUrl = "https://images.unsplash.com/photo-1477281765962-ef34e8bb0967?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "Supreme Court",
-                    badge = "Trending"
+                    badge = "Trending",
+                    topicType = TopicType.PLACE,
+                    entityQuery = "Supreme Court of the United States"
                 ),
                 SearchTopicUiModel(
                     id = "trending-gaza-conflict",
                     title = "Gaza Conflict",
-                    imageUrl = "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "Gaza Conflict",
-                    badge = "Live"
+                    badge = "Live",
+                    topicType = TopicType.EVENT,
+                    entityQuery = "breaking news crowd"
                 )
             )
         ),
@@ -149,30 +170,34 @@ fun SearchScreen(
                 SearchTopicUiModel(
                     id = "entertainment-movies",
                     title = "Movies",
-                    imageUrl = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "Movies",
-                    badge = "Popular"
+                    badge = "Popular",
+                    topicType = TopicType.CATEGORY,
+                    entityQuery = null
                 ),
                 SearchTopicUiModel(
                     id = "entertainment-tv-shows",
                     title = "TV Shows",
-                    imageUrl = "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "TV Shows",
-                    badge = null
+                    badge = null,
+                    topicType = TopicType.CATEGORY,
+                    entityQuery = null
                 ),
                 SearchTopicUiModel(
                     id = "entertainment-music",
                     title = "Music",
-                    imageUrl = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "Music",
-                    badge = "Trending"
+                    badge = "Trending",
+                    topicType = TopicType.CATEGORY,
+                    entityQuery = null
                 ),
                 SearchTopicUiModel(
                     id = "entertainment-celebrities",
                     title = "Celebrities",
-                    imageUrl = "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "Celebrities",
-                    badge = null
+                    badge = null,
+                    topicType = TopicType.CATEGORY,
+                    entityQuery = null
                 )
             )
         ),
@@ -182,30 +207,34 @@ fun SearchScreen(
                 SearchTopicUiModel(
                     id = "sports-nfl",
                     title = "NFL",
-                    imageUrl = "https://images.unsplash.com/photo-1521412644187-c49fa049e84d?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "NFL",
-                    badge = null
+                    badge = null,
+                    topicType = TopicType.CATEGORY,
+                    entityQuery = null
                 ),
                 SearchTopicUiModel(
-                    id = "sports-nba",
-                    title = "NBA",
-                    imageUrl = "https://images.unsplash.com/photo-1504450758481-7338eba7524a?auto=format&fit=crop&w=800&q=80",
-                    searchQuery = "NBA",
-                    badge = null
+                    id = "sports-los-angeles-lakers",
+                    title = "Los Angeles Lakers",
+                    searchQuery = "Los Angeles Lakers",
+                    badge = null,
+                    topicType = TopicType.TEAM,
+                    entityQuery = "Los Angeles Lakers"
                 ),
                 SearchTopicUiModel(
                     id = "sports-ncaa-football",
                     title = "NCAA Football",
-                    imageUrl = "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "NCAA Football",
-                    badge = "Live"
+                    badge = "Live",
+                    topicType = TopicType.EVENT,
+                    entityQuery = "football stadium night"
                 ),
                 SearchTopicUiModel(
                     id = "sports-soccer",
                     title = "Soccer",
-                    imageUrl = "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "Soccer",
-                    badge = null
+                    badge = null,
+                    topicType = TopicType.CATEGORY,
+                    entityQuery = null
                 )
             )
         ),
@@ -215,30 +244,34 @@ fun SearchScreen(
                 SearchTopicUiModel(
                     id = "news-politics",
                     title = "Politics",
-                    imageUrl = "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "Politics",
-                    badge = "Trending"
+                    badge = "Trending",
+                    topicType = TopicType.CATEGORY,
+                    entityQuery = null
                 ),
                 SearchTopicUiModel(
                     id = "news-business",
                     title = "Business",
-                    imageUrl = "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "Business",
-                    badge = null
+                    badge = null,
+                    topicType = TopicType.CATEGORY,
+                    entityQuery = null
                 ),
                 SearchTopicUiModel(
                     id = "news-technology",
                     title = "Technology",
-                    imageUrl = "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "Technology",
-                    badge = null
+                    badge = null,
+                    topicType = TopicType.CATEGORY,
+                    entityQuery = null
                 ),
                 SearchTopicUiModel(
                     id = "news-climate",
                     title = "Climate",
-                    imageUrl = "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "Climate",
-                    badge = "Live"
+                    badge = "Live",
+                    topicType = TopicType.EVENT,
+                    entityQuery = "climate protest crowd"
                 )
             )
         ),
@@ -248,30 +281,34 @@ fun SearchScreen(
                 SearchTopicUiModel(
                     id = "explore-space",
                     title = "Space",
-                    imageUrl = "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "Space",
-                    badge = null
+                    badge = null,
+                    topicType = TopicType.CATEGORY,
+                    entityQuery = null
                 ),
                 SearchTopicUiModel(
                     id = "explore-travel",
                     title = "Travel",
-                    imageUrl = "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "Travel",
-                    badge = null
+                    badge = null,
+                    topicType = TopicType.CATEGORY,
+                    entityQuery = null
                 ),
                 SearchTopicUiModel(
                     id = "explore-science",
                     title = "Science",
-                    imageUrl = "https://images.unsplash.com/photo-1517976487492-5750f3195933?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "Science",
-                    badge = "Popular"
+                    badge = "Popular",
+                    topicType = TopicType.CATEGORY,
+                    entityQuery = null
                 ),
                 SearchTopicUiModel(
                     id = "explore-ai",
                     title = "AI",
-                    imageUrl = "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
                     searchQuery = "AI",
-                    badge = "Trending"
+                    badge = "Trending",
+                    topicType = TopicType.CATEGORY,
+                    entityQuery = null
                 )
             )
         )
@@ -508,15 +545,62 @@ fun SearchScreen(
 private data class SearchTopicUiModel(
     val id: String,
     val title: String,
-    val imageUrl: String,
     val searchQuery: String,
-    val badge: String?
+    val badge: String?,
+    val topicType: TopicType,
+    val entityQuery: String?,
+    val imageUrl: String? = null
 )
 
 private data class SearchTopicSection(
     val title: String,
     val topics: List<SearchTopicUiModel>
 )
+
+private val entityImageUrls = mapOf(
+    "Taylor Swift" to "https://upload.wikimedia.org/wikipedia/commons/6/61/Taylor_Swift_at_the_2023_MTV_Video_Music_Awards_2.png",
+    "Los Angeles Lakers" to "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Los_Angeles_Lakers_logo.svg/512px-Los_Angeles_Lakers_logo.svg.png",
+    "Supreme Court of the United States" to "https://upload.wikimedia.org/wikipedia/commons/1/1b/US_Supreme_Court_Building.jpg"
+)
+
+private val eventImageUrls = mapOf(
+    "sports scoreboard" to "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=800&q=80",
+    "breaking news crowd" to "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=800&q=80",
+    "football stadium night" to "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80",
+    "climate protest crowd" to "https://images.unsplash.com/photo-1497493292307-31c376b6e479?auto=format&fit=crop&w=800&q=80"
+)
+
+private val categoryImageUrls = mapOf(
+    "Movies" to "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=800&q=80",
+    "TV Shows" to "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=800&q=80",
+    "Music" to "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80",
+    "Celebrities" to "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=800&q=80",
+    "NFL" to "https://images.unsplash.com/photo-1521412644187-c49fa049e84d?auto=format&fit=crop&w=800&q=80",
+    "Soccer" to "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?auto=format&fit=crop&w=800&q=80",
+    "Politics" to "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=800&q=80",
+    "Business" to "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80",
+    "Technology" to "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
+    "Space" to "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=800&q=80",
+    "Travel" to "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80",
+    "Science" to "https://images.unsplash.com/photo-1517976487492-5750f3195933?auto=format&fit=crop&w=800&q=80",
+    "AI" to "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80"
+)
+
+private fun resolveTopicImage(topic: SearchTopicUiModel): String {
+    topic.imageUrl?.let { return it }
+    return when (topic.topicType) {
+        TopicType.PERSON,
+        TopicType.TEAM,
+        TopicType.PLACE -> topic.entityQuery?.let { entityImageUrls[it] } ?: defaultCategoryImage(topic)
+        TopicType.EVENT -> topic.entityQuery?.let { eventImageUrls[it] } ?: defaultCategoryImage(topic)
+        TopicType.CATEGORY -> defaultCategoryImage(topic)
+    }
+}
+
+private fun defaultCategoryImage(topic: SearchTopicUiModel): String {
+    return categoryImageUrls[topic.title]
+        ?: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80"
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -534,12 +618,25 @@ private fun TopicCarouselCard(
             .aspectRatio(3f / 4f)
     ) {
         Box {
-            AsyncImage(
-                model = topic.imageUrl,
+            val imageUrl = remember(
+                topic.id,
+                topic.imageUrl,
+                topic.entityQuery,
+                topic.topicType,
+                topic.title
+            ) { resolveTopicImage(topic) }
+            SubcomposeAsyncImage(
+                model = imageUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
-            )
+            ) {
+                when (painter.state) {
+                    is AsyncImagePainter.State.Loading -> ShimmerPlaceholder(Modifier.fillMaxSize())
+                    is AsyncImagePainter.State.Error -> ErrorPlaceholder(Modifier.fillMaxSize())
+                    else -> SubcomposeAsyncImageContent()
+                }
+            }
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -580,6 +677,34 @@ private fun TopicCarouselCard(
             }
         }
     }
+}
+
+@Composable
+private fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition()
+    val shimmerOffset by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1200, easing = LinearEasing)
+        )
+    )
+    val shimmerColors = listOf(
+        Color(0xFF1F1F1F),
+        Color(0xFF3A3A3A),
+        Color(0xFF1F1F1F)
+    )
+    val brush = Brush.linearGradient(
+        colors = shimmerColors,
+        start = Offset(shimmerOffset - 200f, 0f),
+        end = Offset(shimmerOffset, 600f)
+    )
+    Box(modifier.background(brush))
+}
+
+@Composable
+private fun ErrorPlaceholder(modifier: Modifier = Modifier) {
+    Box(modifier.background(Color(0xFF2A2A2A)))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
