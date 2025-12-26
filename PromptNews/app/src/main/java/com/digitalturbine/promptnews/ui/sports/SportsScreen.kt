@@ -75,8 +75,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardActions
-import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -688,11 +688,9 @@ private fun GameDetailModal(game: SportsGame) {
         Spacer(Modifier.height(16.dp))
         Text("Video highlights", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
-        if (game.videoHighlights?.link != null) {
-            Text(text = game.videoHighlights.link ?: "", color = MaterialTheme.colorScheme.primary)
-        } else {
-            Text(text = "No highlights available yet.")
-        }
+        game.videoHighlights?.link?.let { link ->
+            Text(text = link, color = MaterialTheme.colorScheme.primary)
+        } ?: Text(text = "No highlights available yet.")
         Spacer(Modifier.height(16.dp))
         Text("Stadium info", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
