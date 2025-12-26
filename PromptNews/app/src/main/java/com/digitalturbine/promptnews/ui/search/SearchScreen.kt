@@ -112,8 +112,9 @@ fun SearchScreen(
             title = "Trending & Live",
             chips = listOf(
                 "Taylor Swift",
-                "NCAA Football Playoffs",
-                "NFL Playoffs",
+                "NBA Playoffs",
+                "NFL Draft",
+                "Champions League",
                 "Gaza Conflict",
                 "Student Loan Updates",
                 "AI Layoffs",
@@ -136,11 +137,12 @@ fun SearchScreen(
         ChipRowData(
             title = "Sports",
             chips = listOf(
-                "NFL",
+                "Live Scores",
                 "NBA",
-                "NCAA Football",
+                "NFL",
+                "NCAA Basketball",
                 "MLB",
-                "Soccer",
+                "Premier League",
                 "UFC",
                 "Formula 1",
                 "Olympics"
