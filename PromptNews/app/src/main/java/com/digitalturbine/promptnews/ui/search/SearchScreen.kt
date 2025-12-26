@@ -37,6 +37,7 @@ import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
+import coil.compose.rememberAsyncImagePainter
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.Clip
 import com.digitalturbine.promptnews.data.SearchRepository
@@ -623,8 +624,7 @@ private fun rememberTopicImage(
         initialValue = TopicImageState(url = null, isLoading = true),
         key1 = topic.id,
         key2 = topic.imageUrl,
-        key3 = topic.entityQuery,
-        key4 = topic.topicType
+        key3 = topic.entityQuery ?: topic.topicType
     ) {
         val resolved = resolver.resolve(topic)
         value = TopicImageState(url = resolved, isLoading = false)
