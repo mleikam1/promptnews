@@ -75,7 +75,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 val navController = rememberNavController()
-                val items = listOf(Dest.Search, Dest.Home, Dest.Sports, Dest.History)
+                val items = listOf(Dest.Search, Dest.Home, Dest.History)
                 var isGraphReady by remember { mutableStateOf(false) }
 
                 // The crash happens when navigate() calls findStartDestination() while the graph
