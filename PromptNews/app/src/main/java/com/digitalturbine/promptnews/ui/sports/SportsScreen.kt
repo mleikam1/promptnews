@@ -85,7 +85,7 @@ import com.digitalturbine.promptnews.data.sports.SportsGame
 import com.digitalturbine.promptnews.data.sports.SportsResults
 import com.digitalturbine.promptnews.data.sports.SportsTeam
 
-internal data class SportFilter(
+data class SportFilter(
     val name: String,
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val accent: Color
