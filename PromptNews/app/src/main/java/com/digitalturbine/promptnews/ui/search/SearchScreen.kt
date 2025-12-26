@@ -4,14 +4,14 @@ import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -40,6 +41,7 @@ import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.ExperimentalFoundationApi
 import kotlinx.coroutines.launch
 
 enum class SearchScreenState {
@@ -47,7 +49,7 @@ enum class SearchScreenState {
     Results
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     initialQuery: String? = null,
@@ -107,59 +109,170 @@ fun SearchScreen(
         }
     }
 
-    val chips = listOf(
-        ChipRowData(
-            title = "Trending & Live",
-            chips = listOf(
-                "Taylor Swift",
-                "NBA Playoffs",
-                "NFL Draft",
-                "Champions League",
-                "Gaza Conflict",
-                "Student Loan Updates",
-                "AI Layoffs",
-                "Supreme Court Ruling"
+    val topicSections = listOf(
+        SearchTopicSection(
+            title = "Trending Now",
+            topics = listOf(
+                SearchTopicUiModel(
+                    id = "trending-taylor-swift",
+                    title = "Taylor Swift",
+                    imageUrl = "https://images.unsplash.com/photo-1454922915609-78549ad709bb?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "Taylor Swift",
+                    badge = "Trending"
+                ),
+                SearchTopicUiModel(
+                    id = "trending-live-scores",
+                    title = "Live Scores",
+                    imageUrl = "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "Live Scores",
+                    badge = "Live"
+                ),
+                SearchTopicUiModel(
+                    id = "trending-supreme-court",
+                    title = "Supreme Court",
+                    imageUrl = "https://images.unsplash.com/photo-1477281765962-ef34e8bb0967?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "Supreme Court",
+                    badge = "Trending"
+                ),
+                SearchTopicUiModel(
+                    id = "trending-gaza-conflict",
+                    title = "Gaza Conflict",
+                    imageUrl = "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "Gaza Conflict",
+                    badge = "Live"
+                )
             )
         ),
-        ChipRowData(
-            title = "News & Current Affairs",
-            chips = listOf(
-                "Top Stories",
-                "Politics",
-                "World News",
-                "Business",
-                "Technology",
-                "Climate",
-                "Education",
-                "Health"
+        SearchTopicSection(
+            title = "Entertainment",
+            topics = listOf(
+                SearchTopicUiModel(
+                    id = "entertainment-movies",
+                    title = "Movies",
+                    imageUrl = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "Movies",
+                    badge = "Popular"
+                ),
+                SearchTopicUiModel(
+                    id = "entertainment-tv-shows",
+                    title = "TV Shows",
+                    imageUrl = "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "TV Shows",
+                    badge = null
+                ),
+                SearchTopicUiModel(
+                    id = "entertainment-music",
+                    title = "Music",
+                    imageUrl = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "Music",
+                    badge = "Trending"
+                ),
+                SearchTopicUiModel(
+                    id = "entertainment-celebrities",
+                    title = "Celebrities",
+                    imageUrl = "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "Celebrities",
+                    badge = null
+                )
             )
         ),
-        ChipRowData(
+        SearchTopicSection(
             title = "Sports",
-            chips = listOf(
-                "Live Scores",
-                "NBA",
-                "NFL",
-                "NCAA Basketball",
-                "MLB",
-                "Premier League",
-                "UFC",
-                "Formula 1",
-                "Olympics"
+            topics = listOf(
+                SearchTopicUiModel(
+                    id = "sports-nfl",
+                    title = "NFL",
+                    imageUrl = "https://images.unsplash.com/photo-1521412644187-c49fa049e84d?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "NFL",
+                    badge = null
+                ),
+                SearchTopicUiModel(
+                    id = "sports-nba",
+                    title = "NBA",
+                    imageUrl = "https://images.unsplash.com/photo-1504450758481-7338eba7524a?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "NBA",
+                    badge = null
+                ),
+                SearchTopicUiModel(
+                    id = "sports-ncaa-football",
+                    title = "NCAA Football",
+                    imageUrl = "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "NCAA Football",
+                    badge = "Live"
+                ),
+                SearchTopicUiModel(
+                    id = "sports-soccer",
+                    title = "Soccer",
+                    imageUrl = "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "Soccer",
+                    badge = null
+                )
             )
         ),
-        ChipRowData(
+        SearchTopicSection(
+            title = "News & World",
+            topics = listOf(
+                SearchTopicUiModel(
+                    id = "news-politics",
+                    title = "Politics",
+                    imageUrl = "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "Politics",
+                    badge = "Trending"
+                ),
+                SearchTopicUiModel(
+                    id = "news-business",
+                    title = "Business",
+                    imageUrl = "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "Business",
+                    badge = null
+                ),
+                SearchTopicUiModel(
+                    id = "news-technology",
+                    title = "Technology",
+                    imageUrl = "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "Technology",
+                    badge = null
+                ),
+                SearchTopicUiModel(
+                    id = "news-climate",
+                    title = "Climate",
+                    imageUrl = "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "Climate",
+                    badge = "Live"
+                )
+            )
+        ),
+        SearchTopicSection(
             title = "Explore More",
-            chips = listOf(
-                "Space",
-                "Travel",
-                "Inflation",
-                "Mortgage Rates",
-                "Fitness",
-                "Food",
-                "Relationships",
-                "Fashion",
-                "Robotics"
+            topics = listOf(
+                SearchTopicUiModel(
+                    id = "explore-space",
+                    title = "Space",
+                    imageUrl = "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "Space",
+                    badge = null
+                ),
+                SearchTopicUiModel(
+                    id = "explore-travel",
+                    title = "Travel",
+                    imageUrl = "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "Travel",
+                    badge = null
+                ),
+                SearchTopicUiModel(
+                    id = "explore-science",
+                    title = "Science",
+                    imageUrl = "https://images.unsplash.com/photo-1517976487492-5750f3195933?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "Science",
+                    badge = "Popular"
+                ),
+                SearchTopicUiModel(
+                    id = "explore-ai",
+                    title = "AI",
+                    imageUrl = "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
+                    searchQuery = "AI",
+                    badge = "Trending"
+                )
             )
         )
     )
@@ -174,25 +287,36 @@ fun SearchScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (ui is SearchUi.Idle && screenState == SearchScreenState.Prompt) {
-            Column(
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = contentBottomPadding)
-                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(bottom = contentBottomPadding)
             ) {
-                Spacer(Modifier.height(16.dp))
-                chips.forEachIndexed { index, row ->
-                    ChipRow(
-                        title = row.title,
-                        chips = row.chips,
-                        onChipSelected = { runChipSearch(it) }
+                item { Spacer(Modifier.height(16.dp)) }
+                items(topicSections, key = { it.title }) { section ->
+                    Text(
+                        section.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold
                     )
-                    if (index != chips.lastIndex) {
-                        Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(12.dp))
+                    val rowState = rememberLazyListState()
+                    LazyRow(
+                        state = rowState,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp),
+                        flingBehavior = rememberSnapFlingBehavior(rowState)
+                    ) {
+                        items(section.topics, key = { it.id }) { topic ->
+                            TopicCarouselCard(
+                                topic = topic,
+                                onClick = { runChipSearch(topic.searchQuery) }
+                            )
+                        }
                     }
+                    Spacer(Modifier.height(24.dp))
                 }
-                Spacer(Modifier.height(24.dp))
             }
         } else {
             LazyColumn(
@@ -381,38 +505,77 @@ fun SearchScreen(
     }
 }
 
-private data class ChipRowData(
+private data class SearchTopicUiModel(
+    val id: String,
     val title: String,
-    val chips: List<String>
+    val imageUrl: String,
+    val searchQuery: String,
+    val badge: String?
+)
+
+private data class SearchTopicSection(
+    val title: String,
+    val topics: List<SearchTopicUiModel>
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ChipRow(
-    title: String,
-    chips: List<String>,
-    onChipSelected: (String) -> Unit
+private fun TopicCarouselCard(
+    topic: SearchTopicUiModel,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.ExtraBold
-        )
-        Spacer(Modifier.height(10.dp))
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(horizontal = 4.dp)
-        ) {
-            items(chips) { chip ->
-                AssistChip(
-                    onClick = { onChipSelected(chip) },
-                    label = { Text(chip) },
-                    shape = RoundedCornerShape(20.dp),
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        labelColor = MaterialTheme.colorScheme.onPrimaryContainer
+    ElevatedCard(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
+        modifier = modifier
+            .width(190.dp)
+            .aspectRatio(3f / 4f)
+    ) {
+        Box {
+            AsyncImage(
+                model = topic.imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color(0xAA000000))
+                        )
                     )
+            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(12.dp)
+            ) {
+                topic.badge?.let { badge ->
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFF2563EB), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            badge.uppercase(),
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                    Spacer(Modifier.height(6.dp))
+                }
+                Text(
+                    topic.title,
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
