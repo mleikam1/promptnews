@@ -37,9 +37,9 @@ import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
-import coil.compose.rememberAsyncImagePainter
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.Clip
+import com.digitalturbine.promptnews.data.SearchRepository
 import com.digitalturbine.promptnews.data.SearchUi
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
@@ -52,15 +52,18 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 enum class SearchScreenState {
     Prompt,
     Results
 }
 
-private enum class TopicType {
+enum class TopicType {
     PERSON,
-    TEAM,
+    SPORTS_LEAGUE,
+    SPORTS_TEAM,
     PLACE,
     EVENT,
     CATEGORY
@@ -136,7 +139,8 @@ fun SearchScreen(
                     searchQuery = "Taylor Swift",
                     badge = "Trending",
                     topicType = TopicType.PERSON,
-                    entityQuery = "Taylor Swift"
+                    entityQuery = "Taylor Swift",
+                    imageUrl = "https://upload.wikimedia.org/wikipedia/commons/6/61/Taylor_Swift_at_the_2023_MTV_Video_Music_Awards_2.png"
                 ),
                 SearchTopicUiModel(
                     id = "trending-live-scores",
@@ -144,7 +148,8 @@ fun SearchScreen(
                     searchQuery = "Live Scores",
                     badge = "Live",
                     topicType = TopicType.EVENT,
-                    entityQuery = "sports scoreboard"
+                    entityQuery = "sports scoreboard",
+                    imageUrl = "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=800&q=80"
                 ),
                 SearchTopicUiModel(
                     id = "trending-supreme-court",
@@ -209,16 +214,17 @@ fun SearchScreen(
                     title = "NFL",
                     searchQuery = "NFL",
                     badge = null,
-                    topicType = TopicType.CATEGORY,
-                    entityQuery = null
+                    topicType = TopicType.SPORTS_LEAGUE,
+                    entityQuery = "NFL logo",
+                    imageUrl = "https://upload.wikimedia.org/wikipedia/en/thumb/a/a2/National_Football_League_logo.svg/512px-National_Football_League_logo.svg.png"
                 ),
                 SearchTopicUiModel(
                     id = "sports-los-angeles-lakers",
                     title = "Los Angeles Lakers",
                     searchQuery = "Los Angeles Lakers",
                     badge = null,
-                    topicType = TopicType.TEAM,
-                    entityQuery = "Los Angeles Lakers"
+                    topicType = TopicType.SPORTS_TEAM,
+                    entityQuery = "Los Angeles Lakers logo"
                 ),
                 SearchTopicUiModel(
                     id = "sports-ncaa-football",
@@ -321,6 +327,7 @@ fun SearchScreen(
     } else {
         12.dp
     }
+    val topicImageResolver = remember { TopicImageResolver(SearchRepository()) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (ui is SearchUi.Idle && screenState == SearchScreenState.Prompt) {
@@ -348,6 +355,7 @@ fun SearchScreen(
                         items(section.topics, key = { it.id }) { topic ->
                             TopicCarouselCard(
                                 topic = topic,
+                                imageResolver = topicImageResolver,
                                 onClick = { runChipSearch(topic.searchQuery) }
                             )
                         }
@@ -557,25 +565,77 @@ private data class SearchTopicSection(
     val topics: List<SearchTopicUiModel>
 )
 
-private val entityImageUrls = mapOf(
-    "Taylor Swift" to "https://upload.wikimedia.org/wikipedia/commons/6/61/Taylor_Swift_at_the_2023_MTV_Video_Music_Awards_2.png",
-    "Los Angeles Lakers" to "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Los_Angeles_Lakers_logo.svg/512px-Los_Angeles_Lakers_logo.svg.png",
-    "Supreme Court of the United States" to "https://upload.wikimedia.org/wikipedia/commons/1/1b/US_Supreme_Court_Building.jpg"
+private data class TopicImageState(
+    val url: String?,
+    val isLoading: Boolean
 )
 
-private val eventImageUrls = mapOf(
-    "sports scoreboard" to "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=800&q=80",
-    "breaking news crowd" to "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=800&q=80",
-    "football stadium night" to "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80",
-    "climate protest crowd" to "https://images.unsplash.com/photo-1497493292307-31c376b6e479?auto=format&fit=crop&w=800&q=80"
-)
+private class TopicImageResolver(
+    private val repo: SearchRepository
+) {
+    private val cache = mutableMapOf<String, String>()
+    private val cacheMutex = Mutex()
+
+    suspend fun resolve(topic: SearchTopicUiModel): String {
+        topic.imageUrl?.let { return it }
+        val query = serpQueryFor(topic)
+        val cacheKey = "${topic.topicType}:${query ?: topic.title}"
+        cacheMutex.withLock {
+            cache[cacheKey]?.let { return it }
+        }
+
+        val serpImage = query?.let { repo.fetchImages(it).firstOrNull() }
+        val resolved = serpImage ?: fallbackFor(topic)
+        cacheMutex.withLock {
+            cache[cacheKey] = resolved
+        }
+        return resolved
+    }
+
+    private fun serpQueryFor(topic: SearchTopicUiModel): String? {
+        val base = topic.entityQuery ?: return null
+        return when (topic.topicType) {
+            TopicType.PERSON -> "$base portrait photo"
+            TopicType.SPORTS_LEAGUE,
+            TopicType.SPORTS_TEAM -> if (base.contains("logo", ignoreCase = true)) base else "$base logo"
+            TopicType.PLACE -> "$base photo"
+            TopicType.EVENT,
+            TopicType.CATEGORY -> base
+        }
+    }
+
+    private fun fallbackFor(topic: SearchTopicUiModel): String {
+        val byEntity = topic.entityQuery?.let { entityFallbackImages[it] }
+        if (!byEntity.isNullOrBlank()) return byEntity
+        return when (topic.topicType) {
+            TopicType.CATEGORY -> categoryImageUrls[topic.title]
+            else -> topicTypeFallbackImages[topic.topicType]
+        } ?: topicTypeFallbackImages.getValue(TopicType.CATEGORY)
+    }
+}
+
+@Composable
+private fun rememberTopicImage(
+    topic: SearchTopicUiModel,
+    resolver: TopicImageResolver
+): State<TopicImageState> {
+    return produceState(
+        initialValue = TopicImageState(url = null, isLoading = true),
+        key1 = topic.id,
+        key2 = topic.imageUrl,
+        key3 = topic.entityQuery,
+        key4 = topic.topicType
+    ) {
+        val resolved = resolver.resolve(topic)
+        value = TopicImageState(url = resolved, isLoading = false)
+    }
+}
 
 private val categoryImageUrls = mapOf(
     "Movies" to "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=800&q=80",
     "TV Shows" to "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=800&q=80",
     "Music" to "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80",
     "Celebrities" to "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=800&q=80",
-    "NFL" to "https://images.unsplash.com/photo-1521412644187-c49fa049e84d?auto=format&fit=crop&w=800&q=80",
     "Soccer" to "https://images.unsplash.com/photo-1504309092620-4d0ec726efa4?auto=format&fit=crop&w=800&q=80",
     "Politics" to "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=800&q=80",
     "Business" to "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80",
@@ -586,26 +646,29 @@ private val categoryImageUrls = mapOf(
     "AI" to "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80"
 )
 
-private fun resolveTopicImage(topic: SearchTopicUiModel): String {
-    topic.imageUrl?.let { return it }
-    return when (topic.topicType) {
-        TopicType.PERSON,
-        TopicType.TEAM,
-        TopicType.PLACE -> topic.entityQuery?.let { entityImageUrls[it] } ?: defaultCategoryImage(topic)
-        TopicType.EVENT -> topic.entityQuery?.let { eventImageUrls[it] } ?: defaultCategoryImage(topic)
-        TopicType.CATEGORY -> defaultCategoryImage(topic)
-    }
-}
+private val entityFallbackImages = mapOf(
+    "Supreme Court of the United States" to "https://upload.wikimedia.org/wikipedia/commons/1/1b/US_Supreme_Court_Building.jpg",
+    "Los Angeles Lakers logo" to "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Los_Angeles_Lakers_logo.svg/512px-Los_Angeles_Lakers_logo.svg.png",
+    "sports scoreboard" to "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=800&q=80",
+    "breaking news crowd" to "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=800&q=80",
+    "football stadium night" to "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80",
+    "climate protest crowd" to "https://images.unsplash.com/photo-1497493292307-31c376b6e479?auto=format&fit=crop&w=800&q=80"
+)
 
-private fun defaultCategoryImage(topic: SearchTopicUiModel): String {
-    return categoryImageUrls[topic.title]
-        ?: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80"
-}
+private val topicTypeFallbackImages = mapOf(
+    TopicType.PERSON to "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&q=80",
+    TopicType.SPORTS_LEAGUE to "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80",
+    TopicType.SPORTS_TEAM to "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=800&q=80",
+    TopicType.PLACE to "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80",
+    TopicType.EVENT to "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=800&q=80",
+    TopicType.CATEGORY to "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80"
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TopicCarouselCard(
     topic: SearchTopicUiModel,
+    imageResolver: TopicImageResolver,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -618,23 +681,21 @@ private fun TopicCarouselCard(
             .aspectRatio(3f / 4f)
     ) {
         Box {
-            val imageUrl = remember(
-                topic.id,
-                topic.imageUrl,
-                topic.entityQuery,
-                topic.topicType,
-                topic.title
-            ) { resolveTopicImage(topic) }
-            SubcomposeAsyncImage(
-                model = imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                when (painter.state) {
-                    is AsyncImagePainter.State.Loading -> ShimmerPlaceholder(Modifier.fillMaxSize())
-                    is AsyncImagePainter.State.Error -> ErrorPlaceholder(Modifier.fillMaxSize())
-                    else -> SubcomposeAsyncImageContent()
+            val imageState by rememberTopicImage(topic, imageResolver)
+            if (imageState.isLoading) {
+                ShimmerPlaceholder(Modifier.fillMaxSize())
+            } else {
+                SubcomposeAsyncImage(
+                    model = imageState.url,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    when (painter.state) {
+                        is AsyncImagePainter.State.Loading -> ShimmerPlaceholder(Modifier.fillMaxSize())
+                        is AsyncImagePainter.State.Error -> ErrorPlaceholder(Modifier.fillMaxSize())
+                        else -> SubcomposeAsyncImageContent()
+                    }
                 }
             }
             Box(
@@ -704,7 +765,13 @@ private fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
 
 @Composable
 private fun ErrorPlaceholder(modifier: Modifier = Modifier) {
-    Box(modifier.background(Color(0xFF2A2A2A)))
+    Box(
+        modifier.background(
+            Brush.linearGradient(
+                colors = listOf(Color(0xFF2D2D2D), Color(0xFF4A4A4A))
+            )
+        )
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
