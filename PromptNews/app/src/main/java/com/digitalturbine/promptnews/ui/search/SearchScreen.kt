@@ -1,6 +1,8 @@
 package com.digitalturbine.promptnews.ui.search
 
 import android.content.Intent
+import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,36 +27,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
-import coil.compose.SubcomposeAsyncImage
-import coil.compose.SubcomposeAsyncImageContent
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.Clip
-import com.digitalturbine.promptnews.data.serpapi.SerpApiImageService
 import com.digitalturbine.promptnews.data.SearchUi
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
+import com.digitalturbine.promptnews.data.net.Http
+import com.digitalturbine.promptnews.util.Config
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import kotlinx.coroutines.launch
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 enum class SearchScreenState {
     Prompt,
@@ -69,6 +67,8 @@ enum class TopicType {
     EVENT,
     CATEGORY
 }
+
+private const val TAG = "SearchScreen"
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -216,7 +216,7 @@ fun SearchScreen(
                     searchQuery = "NFL",
                     badge = null,
                     topicType = TopicType.SPORTS_LEAGUE,
-                    entityQuery = "NFL logo",
+                    entityQuery = "NFL football logo",
                     imageUrl = "https://upload.wikimedia.org/wikipedia/en/thumb/a/a2/National_Football_League_logo.svg/512px-National_Football_League_logo.svg.png"
                 ),
                 SearchTopicUiModel(
@@ -328,7 +328,7 @@ fun SearchScreen(
     } else {
         12.dp
     }
-    val topicImageResolver = remember { TopicImageResolver(SerpApiImageService()) }
+    val topicImageResolver = remember { TopicImageResolver() }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (ui is SearchUi.Idle && screenState == SearchScreenState.Prompt) {
@@ -571,22 +571,23 @@ private data class TopicImageState(
     val isLoading: Boolean
 )
 
-private class TopicImageResolver(
-    private val serpApiImageService: SerpApiImageService
-) {
+private class TopicImageResolver {
     private val cache = mutableMapOf<String, String>()
     private val cacheMutex = Mutex()
 
     suspend fun resolve(topic: SearchTopicUiModel): String {
-        topic.imageUrl?.let { return it }
         val query = serpQueryFor(topic)
         val cacheKey = "${topic.topicType}:${query ?: topic.title}"
         cacheMutex.withLock {
             cache[cacheKey]?.let { return it }
         }
 
-        val serpImage = query?.let { serpApiImageService.fetchFirstImageUrl(it) }
-        val resolved = serpImage ?: fallbackFor(topic)
+        val fallbackUrl = fallbackFor(topic)
+        val resolved = if (query != null) {
+            fetchSerpApiImageUrl(query, fallbackUrl)
+        } else {
+            fallbackUrl
+        }
         cacheMutex.withLock {
             cache[cacheKey] = resolved
         }
@@ -596,16 +597,17 @@ private class TopicImageResolver(
     private fun serpQueryFor(topic: SearchTopicUiModel): String? {
         val base = topic.entityQuery ?: return null
         return when (topic.topicType) {
-            TopicType.PERSON -> "$base portrait photo"
-            TopicType.SPORTS_LEAGUE,
+            TopicType.PERSON -> "$base portrait"
+            TopicType.SPORTS_LEAGUE -> if (base.contains("football", ignoreCase = true)) base else "$base football logo"
             TopicType.SPORTS_TEAM -> if (base.contains("logo", ignoreCase = true)) base else "$base logo"
             TopicType.PLACE -> "$base photo"
-            TopicType.EVENT,
+            TopicType.EVENT -> "$base photo"
             TopicType.CATEGORY -> null
         }
     }
 
     private fun fallbackFor(topic: SearchTopicUiModel): String {
+        if (!topic.imageUrl.isNullOrBlank()) return topic.imageUrl
         val byEntity = topic.entityQuery?.let { entityFallbackImages[it] }
         if (!byEntity.isNullOrBlank()) return byEntity
         return when (topic.topicType) {
@@ -628,6 +630,52 @@ private fun rememberTopicImage(
     ) {
         val resolved = resolver.resolve(topic)
         value = TopicImageState(url = resolved, isLoading = false)
+    }
+}
+
+private suspend fun fetchSerpApiImageUrl(
+    query: String,
+    fallbackUrl: String
+): String = withContext(Dispatchers.IO) {
+    if (Config.serpApiKey.isBlank()) {
+        Log.w(TAG, "SerpAPI key missing. Falling back for query: $query")
+        return@withContext fallbackUrl
+    }
+    val reqUrl = Uri.parse("https://serpapi.com/google-images-api").buildUpon()
+        .appendQueryParameter("api_key", Config.serpApiKey)
+        .appendQueryParameter("engine", "google_images")
+        .appendQueryParameter("q", query)
+        .appendQueryParameter("num", "1")
+        .build()
+        .toString()
+    Log.d(TAG, "SerpAPI request URL: $reqUrl")
+    return@withContext try {
+        Http.client.newCall(Http.req(reqUrl)).execute().use { response ->
+            if (!response.isSuccessful) {
+                Log.w(TAG, "SerpAPI request failed (${response.code}) for query: $query")
+                return@use fallbackUrl
+            }
+            val body = response.body?.string().orEmpty()
+            if (body.isBlank()) {
+                Log.w(TAG, "SerpAPI response empty for query: $query")
+                return@use fallbackUrl
+            }
+            val root = JSONObject(body)
+            val imageUrl = root.optJSONArray("images_results")
+                ?.optJSONObject(0)
+                ?.optString("original")
+                ?.takeIf { it.isNotBlank() }
+            if (imageUrl.isNullOrBlank()) {
+                Log.w(TAG, "SerpAPI image URL missing for query: $query")
+                fallbackUrl
+            } else {
+                Log.d(TAG, "SerpAPI image URL resolved: $imageUrl")
+                imageUrl
+            }
+        }
+    } catch (e: Exception) {
+        Log.e(TAG, "SerpAPI request exception for query: $query", e)
+        fallbackUrl
     }
 }
 
@@ -680,26 +728,42 @@ private fun TopicCarouselCard(
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
         modifier = modifier
-            .width(190.dp)
-            .aspectRatio(3f / 4f)
+            .width(220.dp)
+            .height(280.dp)
     ) {
         Box {
             val imageState by rememberTopicImage(topic, imageResolver)
-            if (imageState.isLoading) {
-                ShimmerPlaceholder(Modifier.fillMaxSize())
-            } else {
-                SubcomposeAsyncImage(
-                    model = imageState.url,
+            val placeholderPainter = painterResource(R.drawable.ic_topic_placeholder)
+            val imageUrl = imageState.url
+            if (imageState.isLoading || imageUrl.isNullOrBlank()) {
+                Image(
+                    painter = placeholderPainter,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
-                ) {
-                    when (painter.state) {
-                        is AsyncImagePainter.State.Loading -> ShimmerPlaceholder(Modifier.fillMaxSize())
-                        is AsyncImagePainter.State.Error -> ErrorPlaceholder(Modifier.fillMaxSize())
-                        else -> SubcomposeAsyncImageContent()
-                    }
+                )
+                if (!imageState.isLoading && imageUrl.isNullOrBlank()) {
+                    Log.w(TAG, "Topic image URL missing. Showing placeholder for ${topic.title}.")
                 }
+            } else {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                    placeholder = placeholderPainter,
+                    error = placeholderPainter,
+                    onSuccess = {
+                        Log.d(TAG, "Topic image loaded for ${topic.title}: $imageUrl")
+                    },
+                    onError = { error ->
+                        Log.w(
+                            TAG,
+                            "Topic image failed for ${topic.title}: $imageUrl",
+                            error.result.throwable
+                        )
+                    }
+                )
             }
             Box(
                 modifier = Modifier
@@ -741,40 +805,6 @@ private fun TopicCarouselCard(
             }
         }
     }
-}
-
-@Composable
-private fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
-    val transition = rememberInfiniteTransition()
-    val shimmerOffset by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = LinearEasing)
-        )
-    )
-    val shimmerColors = listOf(
-        Color(0xFF1F1F1F),
-        Color(0xFF3A3A3A),
-        Color(0xFF1F1F1F)
-    )
-    val brush = Brush.linearGradient(
-        colors = shimmerColors,
-        start = Offset(shimmerOffset - 200f, 0f),
-        end = Offset(shimmerOffset, 600f)
-    )
-    Box(modifier.background(brush))
-}
-
-@Composable
-private fun ErrorPlaceholder(modifier: Modifier = Modifier) {
-    Box(
-        modifier.background(
-            Brush.linearGradient(
-                colors = listOf(Color(0xFF2D2D2D), Color(0xFF4A4A4A))
-            )
-        )
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
