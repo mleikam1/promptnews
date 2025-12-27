@@ -151,7 +151,11 @@ class MainActivity : ComponentActivity() {
                         ) { backStackEntry ->
                             val query = backStackEntry.arguments?.getString("query").orEmpty()
                             if (isSportsIntent(query)) {
-                                SportsScreen(query = query)
+                                SportsScreen(
+                                    query = query,
+                                    showBack = true,
+                                    onBack = { navController.popBackStack() }
+                                )
                             } else {
                                 SearchScreen(
                                     initialQuery = query,
@@ -175,7 +179,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         composable(Dest.Sports.route) {
-                            SportsScreen(query = "Live scores")
+                            SportsScreen(query = "Live scores", showBack = false, onBack = {})
                         }
                         composable(Dest.History.route) {
                             HistoryScreen(onEntrySelected = { entry ->
