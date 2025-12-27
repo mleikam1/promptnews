@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
+import com.digitalturbine.promptnews.R
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.Clip
 import com.digitalturbine.promptnews.data.SearchUi
@@ -329,6 +330,7 @@ fun SearchScreen(
         12.dp
     }
     val topicImageResolver = remember { TopicImageResolver() }
+    val placeholderPainter = painterResource(R.drawable.ic_topic_placeholder)
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (ui is SearchUi.Idle && screenState == SearchScreenState.Prompt) {
@@ -441,6 +443,9 @@ fun SearchScreen(
                                             model = u,
                                             contentDescription = null,
                                             contentScale = ContentScale.Crop,
+                                            placeholder = placeholderPainter,
+                                            error = placeholderPainter,
+                                            fallback = placeholderPainter,
                                             modifier = Modifier
                                                 .size(110.dp)
                                                 .clip(RoundedCornerShape(12.dp))
@@ -855,10 +860,14 @@ private fun HeroCard(article: Article, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Box {
+            val placeholderPainter = painterResource(R.drawable.ic_topic_placeholder)
             AsyncImage(
                 model = article.imageUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
+                placeholder = placeholderPainter,
+                error = placeholderPainter,
+                fallback = placeholderPainter,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
@@ -871,7 +880,12 @@ private fun HeroCard(article: Article, onClick: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
-                    painter = rememberAsyncImagePainter(article.logoUrl),
+                    painter = rememberAsyncImagePainter(
+                        model = article.logoUrl,
+                        placeholder = placeholderPainter,
+                        error = placeholderPainter,
+                        fallback = placeholderPainter
+                    ),
                     contentDescription = null,
                     modifier = Modifier
                         .size(18.dp)
@@ -918,10 +932,16 @@ private fun RowCard(a: Article, onClick: () -> Unit) {
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.Top
     ) {
+        val placeholderPainter = painterResource(R.drawable.ic_topic_placeholder)
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
-                    painter = rememberAsyncImagePainter(a.logoUrl),
+                    painter = rememberAsyncImagePainter(
+                        model = a.logoUrl,
+                        placeholder = placeholderPainter,
+                        error = placeholderPainter,
+                        fallback = placeholderPainter
+                    ),
                     contentDescription = null,
                     modifier = Modifier
                         .size(16.dp)
@@ -957,6 +977,9 @@ private fun RowCard(a: Article, onClick: () -> Unit) {
                 model = a.imageUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
+                placeholder = placeholderPainter,
+                error = placeholderPainter,
+                fallback = placeholderPainter,
                 modifier = Modifier
                     .size(width = 118.dp, height = 84.dp)
                     .clip(RoundedCornerShape(12.dp))
@@ -986,10 +1009,14 @@ private fun ClipCard(c: Clip, onClick: () -> Unit) {
         modifier = Modifier.width(190.dp)
     ) {
         Box {
+            val placeholderPainter = painterResource(R.drawable.ic_topic_placeholder)
             AsyncImage(
                 model = c.thumbnail,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
+                placeholder = placeholderPainter,
+                error = placeholderPainter,
+                fallback = placeholderPainter,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(9f / 16f)
