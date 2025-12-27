@@ -48,6 +48,7 @@ import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.network.Services
+import com.digitalturbine.promptnews.ui.PromptNewsTopBar
 import com.digitalturbine.promptnews.util.HomePrefs
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import kotlinx.coroutines.launch
@@ -87,34 +88,44 @@ fun HomeScreen(onSearch: (String) -> Unit) {
     val listLocal = local.drop(1).take(6)
 
     val defaultBadge = "News"
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(bottom = 88.dp)
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        if (location.isNotBlank() && heroLocal != null) {
-            item { Spacer(Modifier.height(16.dp)) }
-            item { LocalNewsHeader(location = location) }
-            item {
-                HeroCard(
-                    article = heroLocal,
-                    badgeLabel = defaultBadge,
-                    badgeColor = badgeColorFor(defaultBadge)
-                ) { openArticle(ctx, heroLocal.url) }
+        PromptNewsTopBar(
+            showBack = false,
+            onBack = {}
+        )
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(1f),
+            contentPadding = PaddingValues(bottom = 88.dp)
+        ) {
+            if (location.isNotBlank() && heroLocal != null) {
+                item { Spacer(Modifier.height(16.dp)) }
+                item { LocalNewsHeader(location = location) }
+                item {
+                    HeroCard(
+                        article = heroLocal,
+                        badgeLabel = defaultBadge,
+                        badgeColor = badgeColorFor(defaultBadge)
+                    ) { openArticle(ctx, heroLocal.url) }
+                }
             }
-        }
-        itemsIndexed(listLocal, key = { index, art -> "${art.url}-$index" }) { index, art ->
-            NewsRowCard(
-                article = art,
-                badgeLabel = defaultBadge,
-                badgeColor = badgeColorFor(defaultBadge),
-                showDivider = index != listLocal.lastIndex,
-                onClick = { openArticle(ctx, art.url) }
-            )
-        }
+            itemsIndexed(listLocal, key = { index, art -> "${art.url}-$index" }) { index, art ->
+                NewsRowCard(
+                    article = art,
+                    badgeLabel = defaultBadge,
+                    badgeColor = badgeColorFor(defaultBadge),
+                    showDivider = index != listLocal.lastIndex,
+                    onClick = { openArticle(ctx, art.url) }
+                )
+            }
 
-        item { Spacer(Modifier.height(24.dp)) }
+            item { Spacer(Modifier.height(24.dp)) }
+        }
     }
 }
 
