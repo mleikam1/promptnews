@@ -3,6 +3,7 @@ package com.digitalturbine.promptnews.ui.history
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -28,6 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.digitalturbine.promptnews.data.history.HistoryEntry
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
+import com.digitalturbine.promptnews.ui.PromptNewsTopBar
 import com.digitalturbine.promptnews.util.TimeLabelFormatter
 
 @Composable
@@ -45,42 +47,51 @@ fun HistoryScreen(
         vm.pruneOldEntries()
     }
 
-    if (entries.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Your recent searches and topics will appear here.",
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
-        return
-    }
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(entries, key = { it.id }) { entry ->
-            ListItem(
-                leadingContent = {
-                    Icon(
-                        imageVector = when (entry.type) {
-                            HistoryType.CHIP -> Icons.Filled.Label
-                            HistoryType.SEARCH -> Icons.Filled.Search
-                        },
-                        contentDescription = null
-                    )
-                },
-                headlineContent = { Text(entry.label) },
-                supportingContent = { Text(TimeLabelFormatter.formatTimeLabel(entry.timestampMs)) },
+    Column(modifier = Modifier.fillMaxSize()) {
+        PromptNewsTopBar(
+            showBack = false,
+            onBack = {}
+        )
+        if (entries.isEmpty()) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onEntrySelected(entry) }
-            )
+                    .fillMaxSize()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Your recent searches and topics will appear here.",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+            return@Column
+        }
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(1f)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(entries, key = { it.id }) { entry ->
+                ListItem(
+                    leadingContent = {
+                        Icon(
+                            imageVector = when (entry.type) {
+                                HistoryType.CHIP -> Icons.Filled.Label
+                                HistoryType.SEARCH -> Icons.Filled.Search
+                            },
+                            contentDescription = null
+                        )
+                    },
+                    headlineContent = { Text(entry.label) },
+                    supportingContent = { Text(TimeLabelFormatter.formatTimeLabel(entry.timestampMs)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onEntrySelected(entry) }
+                )
+            }
         }
     }
 }

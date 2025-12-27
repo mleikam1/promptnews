@@ -3,6 +3,7 @@ package com.digitalturbine.promptnews.ui.search
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -44,6 +45,7 @@ import com.digitalturbine.promptnews.data.SearchUi
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
 import com.digitalturbine.promptnews.data.net.Http
+import com.digitalturbine.promptnews.ui.PromptNewsTopBar
 import com.digitalturbine.promptnews.util.Config
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -78,6 +80,7 @@ fun SearchScreen(
     initialSource: String? = null,
     screenState: SearchScreenState,
     onSearchRequested: (String, HistoryType) -> Unit,
+    onBack: () -> Unit,
     vm: SearchViewModel = viewModel()
 ) {
     val ui by vm.ui.collectAsState()
@@ -129,6 +132,10 @@ fun SearchScreen(
             val type = initialSource?.let { source -> runCatching { HistoryType.valueOf(source) }.getOrNull() }
             runSearch(trimmed, type ?: HistoryType.SEARCH, type != null)
         }
+    }
+
+    BackHandler(enabled = screenState == SearchScreenState.Results) {
+        onBack()
     }
 
     val topicSections = listOf(
@@ -332,7 +339,16 @@ fun SearchScreen(
     val topicImageResolver = remember { TopicImageResolver() }
     val placeholderPainter = painterResource(R.drawable.ic_topic_placeholder)
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        PromptNewsTopBar(
+            showBack = screenState == SearchScreenState.Results,
+            onBack = onBack
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(1f)
+        ) {
         if (ui is SearchUi.Idle && screenState == SearchScreenState.Prompt) {
             LazyColumn(
                 modifier = Modifier
@@ -549,10 +565,11 @@ fun SearchScreen(
                 )
             }
         }
-        CenteredLoadingStateView(
-            query = lastQuery,
-            isLoading = ui is SearchUi.Searching
-        )
+            CenteredLoadingStateView(
+                query = lastQuery,
+                isLoading = ui is SearchUi.Searching
+            )
+        }
     }
 }
 

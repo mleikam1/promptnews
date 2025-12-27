@@ -13,13 +13,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material3.*
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,7 +63,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         lifecycleScope.launch {
@@ -89,19 +86,6 @@ class MainActivity : ComponentActivity() {
                 }
 
                 Scaffold(
-                    topBar = {
-                        TopAppBar(
-                            title = { Text("PromptNews") },
-                            actions = {
-                                IconButton(onClick = {}) {
-                                    Icon(
-                                        imageVector = Icons.Filled.AccountCircle,
-                                        contentDescription = "Profile"
-                                    )
-                                }
-                            }
-                        )
-                    },
                     bottomBar = {
                         NavigationBar {
                             val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -153,7 +137,8 @@ class MainActivity : ComponentActivity() {
                                 onSearchRequested = { query, source ->
                                     // Push results onto the back stack so back returns to prompt.
                                     navController.navigate(Dest.SearchResults.routeFor(query, source))
-                                }
+                                },
+                                onBack = { navController.popBackStack() }
                             )
                         }
                         composable(
@@ -170,7 +155,8 @@ class MainActivity : ComponentActivity() {
                                 onSearchRequested = { query, source ->
                                     // Each follow-up prompt creates its own results entry.
                                     navController.navigate(Dest.SearchResults.routeFor(query, source))
-                                }
+                                },
+                                onBack = { navController.popBackStack() }
                             )
                         }
                         composable(Dest.Home.route) {
