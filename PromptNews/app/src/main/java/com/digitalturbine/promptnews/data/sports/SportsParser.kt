@@ -23,9 +23,9 @@ object SportsParser {
         )
 
         val matches = buildList {
-            root.optJSONObject("live_game")?.let { add(parseMatch(it)) }
-            addAll(parseMatches(root.optJSONArray("recent_games")))
-            addAll(parseMatches(root.optJSONArray("upcoming_games")))
+            root.optJSONObject("live_game")?.let { add(parseMatch(it, SportsMatchStatusBucket.LIVE)) }
+            addAll(parseMatches(root.optJSONArray("recent_games"), SportsMatchStatusBucket.COMPLETED))
+            addAll(parseMatches(root.optJSONArray("upcoming_games"), SportsMatchStatusBucket.UPCOMING))
         }
 
         return SportsResults(
@@ -34,14 +34,14 @@ object SportsParser {
         )
     }
 
-    private fun parseMatches(array: JSONArray?): List<SportsMatchModel> {
+    private fun parseMatches(array: JSONArray?, bucket: SportsMatchStatusBucket): List<SportsMatchModel> {
         if (array == null) return emptyList()
         return (0 until array.length()).mapNotNull { index ->
-            array.optJSONObject(index)?.let { parseMatch(it) }
+            array.optJSONObject(index)?.let { parseMatch(it, bucket) }
         }
     }
 
-    private fun parseMatch(obj: JSONObject): SportsMatchModel {
+    private fun parseMatch(obj: JSONObject, bucket: SportsMatchStatusBucket): SportsMatchModel {
         val teams = obj.optJSONArray("teams")?.let { teamsArray ->
             (0 until teamsArray.length()).mapNotNull { index ->
                 val teamObj = teamsArray.optJSONObject(index) ?: return@mapNotNull null
@@ -82,6 +82,7 @@ object SportsParser {
             context = context,
             homeTeam = scoredTeams.getOrNull(0),
             awayTeam = scoredTeams.getOrNull(1),
+            statusBucket = bucket,
             statusText = status,
             dateText = time ?: date,
             highlight = highlights,

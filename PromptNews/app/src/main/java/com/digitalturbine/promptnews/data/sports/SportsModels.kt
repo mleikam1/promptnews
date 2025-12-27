@@ -21,11 +21,18 @@ data class HighlightModel(
     val duration: String?
 )
 
+enum class SportsMatchStatusBucket {
+    LIVE,
+    COMPLETED,
+    UPCOMING
+}
+
 data class SportsMatchModel(
     val id: String?,
     val context: LeagueContextModel?,
     val homeTeam: TeamModel?,
     val awayTeam: TeamModel?,
+    val statusBucket: SportsMatchStatusBucket,
     val statusText: String?,
     val dateText: String?,
     val highlight: HighlightModel?,

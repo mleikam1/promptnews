@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,8 +56,10 @@ import com.digitalturbine.promptnews.data.sports.HighlightModel
 import com.digitalturbine.promptnews.data.sports.LeagueContextModel
 import com.digitalturbine.promptnews.data.sports.SportsHeaderModel
 import com.digitalturbine.promptnews.data.sports.SportsMatchModel
+import com.digitalturbine.promptnews.data.sports.SportsMatchStatusBucket
 import com.digitalturbine.promptnews.data.sports.TeamModel
 import com.digitalturbine.promptnews.data.sports.displayText
+import com.digitalturbine.promptnews.ui.PromptNewsTopBar
 import com.digitalturbine.promptnews.ui.components.HeroCard
 import com.digitalturbine.promptnews.ui.components.RowCard
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
@@ -68,7 +69,9 @@ fun SportsScreen(
     query: String?,
     vm: SportsViewModel = viewModel(),
     onMatchSelected: (SportsMatchModel) -> Unit = {},
-    onHighlightSelected: (HighlightModel) -> Unit = {}
+    onHighlightSelected: (HighlightModel) -> Unit = {},
+    showBack: Boolean = false,
+    onBack: () -> Unit = {}
 ) {
     val uiState by vm.uiState.collectAsState()
     val feedState by vm.feedState.collectAsState()
@@ -84,8 +87,9 @@ fun SportsScreen(
         feedError = feedError,
         onMatchSelected = onMatchSelected,
         onHighlightSelected = onHighlightSelected,
-        onShortcutSelected = { vm.search(it) },
-        onLoadMoreStories = { vm.loadMoreStories() }
+        onLoadMoreStories = { vm.loadMoreStories() },
+        showBack = showBack,
+        onBack = onBack
     )
 }
 
@@ -96,137 +100,131 @@ private fun SportsScreenContent(
     feedError: String?,
     onMatchSelected: (SportsMatchModel) -> Unit,
     onHighlightSelected: (HighlightModel) -> Unit,
-    onShortcutSelected: (String) -> Unit,
-    onLoadMoreStories: () -> Unit
+    onLoadMoreStories: () -> Unit,
+    showBack: Boolean,
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(bottom = 24.dp)
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        when (val state = uiState) {
-            is SportsUiState.Idle -> {
-                item {
-                    EmptySportsState()
-                }
-            }
-            is SportsUiState.Loading -> {
-                item {
-                    SportsHeader(
-                        header = SportsHeaderModel(
-                            title = state.query,
-                            subtitle = null,
-                            thumbnail = null,
-                            tabs = listOf("Matches", "News", "Standings")
-                        )
-                    )
-                }
-                item { Spacer(Modifier.height(12.dp)) }
-                item { SportsSkeleton() }
-            }
-            is SportsUiState.Loaded -> {
-                val header = state.results.header
-                if (header != null) {
+        PromptNewsTopBar(title = "PromptNews", showBack = showBack, onBack = onBack)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 24.dp)
+        ) {
+            when (val state = uiState) {
+                is SportsUiState.Idle -> {
                     item {
-                        SportsHeader(header = header)
+                        SportsHeader(
+                            header = SportsHeaderModel(
+                                title = "Sports",
+                                subtitle = "Latest updates · Scores · News",
+                                thumbnail = null,
+                                tabs = emptyList()
+                            )
+                        )
+                    }
+                    item { Spacer(Modifier.height(12.dp)) }
+                    item { EmptySportsState() }
+                }
+                is SportsUiState.Loading -> {
+                    item {
+                        SportsHeader(
+                            header = SportsHeaderModel(
+                                title = state.query,
+                                subtitle = "Latest updates · Scores · News",
+                                thumbnail = null,
+                                tabs = emptyList()
+                            )
+                        )
+                    }
+                    item { Spacer(Modifier.height(12.dp)) }
+                    item { SportsSkeleton() }
+                }
+                is SportsUiState.Loaded -> {
+                    val header = state.results.header
+                    if (header != null) {
+                        item {
+                            SportsHeader(header = header.copy(subtitle = "Latest updates · Scores · News"))
+                        }
+                    }
+                    item { Spacer(Modifier.height(12.dp)) }
+                    state.inlineMessage?.let { message ->
+                        item { InlineFallbackMessage(message = message) }
+                        item { Spacer(Modifier.height(8.dp)) }
+                    }
+                    item {
+                        GamesModule(
+                            matches = state.results.matches,
+                            onMatchSelected = onMatchSelected,
+                            onHighlightSelected = onHighlightSelected
+                        )
                     }
                 }
-                item { Spacer(Modifier.height(12.dp)) }
-                items(state.results.matches) { match ->
-                    MatchCard(
-                        match = match,
-                        onMatchSelected = onMatchSelected,
-                        onHighlightSelected = onHighlightSelected
-                    )
-                    Spacer(Modifier.height(12.dp))
+            }
+            if (feedState.stories.isEmpty() && feedState.isLoading) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
             }
-            is SportsUiState.Partial -> {
+            if (feedState.stories.isNotEmpty()) {
+                item { Spacer(Modifier.height(16.dp)) }
                 item {
-                    SportsHeader(
-                        header = SportsHeaderModel(
-                            title = state.query,
-                            subtitle = "Latest sports updates",
-                            thumbnail = null,
-                            tabs = listOf("News")
-                        )
+                    Text(
+                        text = "Latest Stories",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 16.dp)
                     )
                 }
-                item { InlineFallbackMessage(message = state.message) }
                 item { Spacer(Modifier.height(8.dp)) }
-            }
-            is SportsUiState.Fallback -> {
-                item {
-                    TodayInSportsFallback(
-                        context = state.context,
-                        onMatchSelected = onMatchSelected,
-                        onHighlightSelected = onHighlightSelected,
-                        onShortcutSelected = onShortcutSelected
-                    )
+                feedState.stories.firstOrNull()?.let { story ->
+                    item {
+                        val article = story.toArticle()
+                        HeroCard(
+                            article = article,
+                            onClick = {
+                                context.startActivity(
+                                    Intent(context, ArticleWebViewActivity::class.java)
+                                        .putExtra("url", article.url)
+                                )
+                            }
+                        )
+                    }
+                    if (feedState.stories.size > 1) {
+                        item { Spacer(Modifier.height(12.dp)) }
+                    }
                 }
-            }
-        }
-        if (feedState.stories.isEmpty() && feedState.isLoading) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-        }
-        if (feedState.stories.isNotEmpty()) {
-            item { Spacer(Modifier.height(16.dp)) }
-            item {
-                Text(
-                    text = "Latest Stories",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-            }
-            item { Spacer(Modifier.height(8.dp)) }
-            feedState.stories.firstOrNull()?.let { story ->
-                item {
-                    val article = story.toArticle()
-                    HeroCard(
-                        article = article,
-                        onClick = {
+                items(feedState.stories.drop(1), key = { it.url }) { story ->
+                    SportsStoryRow(
+                        story = story,
+                        onArticleSelected = { url ->
                             context.startActivity(
                                 Intent(context, ArticleWebViewActivity::class.java)
-                                    .putExtra("url", article.url)
+                                    .putExtra("url", url)
                             )
                         }
                     )
+                    Spacer(Modifier.height(8.dp))
                 }
-                if (feedState.stories.size > 1) {
-                    item { Spacer(Modifier.height(12.dp)) }
+                item {
+                    SportsFeedFooter(
+                        isLoading = feedState.isLoading,
+                        canLoadMore = feedState.canLoadMore,
+                        errorMessage = feedError,
+                        onLoadMore = onLoadMoreStories
+                    )
                 }
-            }
-            items(feedState.stories.drop(1), key = { it.url }) { story ->
-                SportsStoryRow(
-                    story = story,
-                    onArticleSelected = { url ->
-                        context.startActivity(
-                            Intent(context, ArticleWebViewActivity::class.java)
-                                .putExtra("url", url)
-                        )
-                    }
-                )
-                Spacer(Modifier.height(8.dp))
-            }
-            item {
-                SportsFeedFooter(
-                    isLoading = feedState.isLoading,
-                    canLoadMore = feedState.canLoadMore,
-                    errorMessage = feedError,
-                    onLoadMore = onLoadMoreStories
-                )
             }
         }
     }
@@ -235,79 +233,32 @@ private fun SportsScreenContent(
 @Composable
 private fun SportsHeader(header: SportsHeaderModel) {
     Surface(
-        color = MaterialTheme.colorScheme.primary,
-        shadowElevation = 4.dp
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 0.dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AsyncImage(
-                    model = header.thumbnail,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f))
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = header.title.orEmpty(),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
+                header.subtitle?.let { subtitle ->
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        text = header.title.orEmpty(),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    header.subtitle?.let { subtitle ->
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = subtitle,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            TabsRow(tabs = header.tabs)
-        }
-    }
-}
-
-@Composable
-private fun TabsRow(tabs: List<String>) {
-    val items = if (tabs.isEmpty()) listOf("Matches", "News", "Standings") else tabs
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        items.forEachIndexed { index, title ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = title.uppercase(),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Medium
-                )
-                Spacer(Modifier.height(6.dp))
-                if (index == 0) {
-                    Box(
-                        modifier = Modifier
-                            .height(3.dp)
-                            .width(28.dp)
-                            .background(MaterialTheme.colorScheme.onPrimary)
-                    )
-                } else {
-                    Spacer(Modifier.height(3.dp))
                 }
             }
         }
@@ -344,7 +295,10 @@ private fun MatchCard(
                     TeamRow(team = match.awayTeam)
                 }
                 Spacer(Modifier.width(12.dp))
-                StatusDateColumn(status = match.statusText, date = match.dateText)
+                StatusDateColumn(
+                    status = match.statusLabel(),
+                    date = match.dateText
+                )
                 match.highlight?.let { highlight ->
                     Spacer(Modifier.width(12.dp))
                     HighlightThumbnail(highlight = highlight, onClick = { onHighlightSelected(highlight) })
@@ -415,6 +369,14 @@ private fun StatusDateColumn(status: String?, date: String?) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+private fun SportsMatchModel.statusLabel(): String {
+    return when (statusBucket) {
+        SportsMatchStatusBucket.LIVE -> statusText?.ifBlank { "LIVE" } ?: "LIVE"
+        SportsMatchStatusBucket.COMPLETED -> statusText?.ifBlank { "FINAL" } ?: "FINAL"
+        SportsMatchStatusBucket.UPCOMING -> statusText?.ifBlank { "UPCOMING" } ?: "UPCOMING"
     }
 }
 
@@ -517,6 +479,87 @@ private fun InlineFallbackMessage(message: String) {
 }
 
 @Composable
+private fun GamesModule(
+    matches: List<SportsMatchModel>,
+    onMatchSelected: (SportsMatchModel) -> Unit,
+    onHighlightSelected: (HighlightModel) -> Unit
+) {
+    val liveGames = matches.filter { it.statusBucket == SportsMatchStatusBucket.LIVE }
+    val completedGames = matches.filter { it.statusBucket == SportsMatchStatusBucket.COMPLETED }
+    val upcomingGames = matches.filter { it.statusBucket == SportsMatchStatusBucket.UPCOMING }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Games",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+        Spacer(Modifier.height(8.dp))
+        if (liveGames.isEmpty() && completedGames.isEmpty() && upcomingGames.isEmpty()) {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Text(
+                    text = "No games scheduled today.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+                )
+            }
+            return
+        }
+        GamesSection(
+            title = "Live Games",
+            matches = liveGames,
+            onMatchSelected = onMatchSelected,
+            onHighlightSelected = onHighlightSelected
+        )
+        GamesSection(
+            title = "Completed Games",
+            matches = completedGames,
+            onMatchSelected = onMatchSelected,
+            onHighlightSelected = onHighlightSelected
+        )
+        GamesSection(
+            title = "Upcoming Games",
+            matches = upcomingGames,
+            onMatchSelected = onMatchSelected,
+            onHighlightSelected = onHighlightSelected
+        )
+    }
+}
+
+@Composable
+private fun GamesSection(
+    title: String,
+    matches: List<SportsMatchModel>,
+    onMatchSelected: (SportsMatchModel) -> Unit,
+    onHighlightSelected: (HighlightModel) -> Unit
+) {
+    if (matches.isEmpty()) return
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(horizontal = 16.dp)
+    )
+    Spacer(Modifier.height(8.dp))
+    matches.forEach { match ->
+        MatchCard(
+            match = match,
+            onMatchSelected = onMatchSelected,
+            onHighlightSelected = onHighlightSelected
+        )
+        Spacer(Modifier.height(12.dp))
+    }
+}
+
+@Composable
 private fun SportsStoryRow(story: Story, onArticleSelected: (String) -> Unit) {
     val article = story.toArticle()
     RowCard(a = article, onClick = { onArticleSelected(article.url) })
@@ -570,84 +613,6 @@ private fun SportsFeedFooter(
 }
 
 @Composable
-private fun TodayInSportsFallback(
-    context: SportsFallbackContext,
-    onMatchSelected: (SportsMatchModel) -> Unit,
-    onHighlightSelected: (HighlightModel) -> Unit,
-    onShortcutSelected: (String) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                text = context.title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = context.subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        if (context.cachedMatches.isNotEmpty()) {
-            Text(
-                text = "Upcoming Games",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            context.cachedMatches.forEach { match ->
-                MatchCard(
-                    match = match,
-                    onMatchSelected = onMatchSelected,
-                    onHighlightSelected = onHighlightSelected
-                )
-                Spacer(Modifier.height(8.dp))
-            }
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = "League Headlines",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            context.headlines.forEach { headline ->
-                Text(
-                    text = "• $headline",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = "Team shortcuts",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(context.shortcuts) { shortcut ->
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.clickable { onShortcutSelected(shortcut) }
-                    ) {
-                        Text(
-                            text = shortcut,
-                            style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
 @Composable
 private fun SportsSkeleton() {
     val transition = rememberInfiniteTransition(label = "skeleton")

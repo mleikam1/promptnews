@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.digitalturbine.promptnews.data.Story
 import com.digitalturbine.promptnews.data.sports.SportsHeaderModel
-import com.digitalturbine.promptnews.data.sports.SportsMatchModel
 import com.digitalturbine.promptnews.data.sports.SportsNewsRepository
 import com.digitalturbine.promptnews.data.sports.SportsRepository
 import com.digitalturbine.promptnews.data.sports.SportsResults
@@ -17,14 +16,10 @@ import kotlinx.coroutines.launch
 sealed class SportsUiState {
     data object Idle : SportsUiState()
     data class Loading(val query: String) : SportsUiState()
-    data class Loaded(val query: String, val results: SportsResults) : SportsUiState()
-    data class Partial(
+    data class Loaded(
         val query: String,
-        val message: String
-    ) : SportsUiState()
-    data class Fallback(
-        val query: String,
-        val context: SportsFallbackContext
+        val results: SportsResults,
+        val inlineMessage: String? = null
     ) : SportsUiState()
 }
 
@@ -33,14 +28,6 @@ data class SportsFeedState(
     val isLoading: Boolean = false,
     val canLoadMore: Boolean = true,
     val offset: Int = 0
-)
-
-data class SportsFallbackContext(
-    val title: String,
-    val subtitle: String,
-    val cachedMatches: List<SportsMatchModel>,
-    val headlines: List<String>,
-    val shortcuts: List<String>
 )
 
 class SportsViewModel(
@@ -69,24 +56,21 @@ class SportsViewModel(
         viewModelScope.launch {
             val results = runCatching { repository.fetchSportsResults(normalized) }.getOrNull()
             val hydratedResults = results?.withFallbackTitle(normalized)
-            if (hydratedResults != null && hydratedResults.matches.isNotEmpty()) {
+            if (hydratedResults != null) {
                 lastResults = hydratedResults
-                _uiState.value = SportsUiState.Loaded(normalized, hydratedResults)
-                return@launch
             }
-
-            val feed = _feedState.value
-            _uiState.value = if (!feed.isLoading && feed.stories.isEmpty()) {
-                SportsUiState.Fallback(
-                    query = normalized,
-                    context = buildFallbackContext(normalized, lastResults)
-                )
+            val header = hydratedResults?.header ?: SportsHeaderModel(normalized, null, null, emptyList())
+            val matches = hydratedResults?.matches ?: lastResults?.matches.orEmpty()
+            val inlineMessage = if (hydratedResults == null) {
+                "Live scores unavailable — showing today’s completed and upcoming games"
             } else {
-                SportsUiState.Partial(
-                    query = normalized,
-                    message = "Live scores unavailable — showing latest sports news"
-                )
+                null
             }
+            _uiState.value = SportsUiState.Loaded(
+                query = normalized,
+                results = SportsResults(header = header, matches = matches),
+                inlineMessage = inlineMessage
+            )
         }
         viewModelScope.launch {
             loadInitialStories(normalized)
@@ -136,12 +120,6 @@ class SportsViewModel(
                 canLoadMore = stories.size == INITIAL_LIMIT,
                 offset = LOAD_MORE_OFFSET_INCREMENT
             )
-            if (stories.isEmpty() && _uiState.value is SportsUiState.Partial) {
-                _uiState.value = SportsUiState.Fallback(
-                    query = query,
-                    context = buildFallbackContext(query, lastResults)
-                )
-            }
         }.onFailure {
             _feedState.value = _feedState.value.copy(isLoading = false, canLoadMore = false)
         }
@@ -161,32 +139,6 @@ private fun SportsResults.withFallbackTitle(query: String): SportsResults {
         tabs = if (current.tabs.isEmpty()) listOf("Matches", "News", "Standings") else current.tabs
     )
     return copy(header = updated)
-}
-
-private fun buildFallbackContext(query: String, lastResults: SportsResults?): SportsFallbackContext {
-    val normalized = query.lowercase()
-    val headlines = when {
-        "nfl" in normalized -> listOf("NFL week previews", "Top NFL highlights", "Injury updates to watch")
-        "nba" in normalized -> listOf("NBA standings watch", "Top plays from last night", "Trade chatter roundup")
-        "mlb" in normalized -> listOf("MLB series previews", "Pitching matchups", "Power rankings")
-        "nhl" in normalized -> listOf("NHL playoff race", "Goalie spotlight", "League headlines")
-        "soccer" in normalized -> listOf("Global soccer headlines", "Weekend fixtures", "Transfer news")
-        else -> listOf("Top sports headlines", "Upcoming marquee games", "League updates")
-    }
-    val shortcuts = when {
-        "nfl" in normalized -> listOf("Chiefs", "Cowboys", "Eagles", "49ers")
-        "nba" in normalized -> listOf("Lakers", "Celtics", "Warriors", "Bucks")
-        "mlb" in normalized -> listOf("Yankees", "Dodgers", "Braves", "Astros")
-        "nhl" in normalized -> listOf("Rangers", "Maple Leafs", "Oilers", "Golden Knights")
-        else -> listOf("NFL", "NBA", "MLB", "NHL")
-    }
-    return SportsFallbackContext(
-        title = "Today in Sports",
-        subtitle = "Quick ways to catch up while scores load.",
-        cachedMatches = lastResults?.matches?.take(3).orEmpty(),
-        headlines = headlines,
-        shortcuts = shortcuts
-    )
 }
 
 private const val INITIAL_LIMIT = 7
