@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
@@ -21,16 +22,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
-import com.digitalturbine.promptnews.R
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.Clip
 import com.digitalturbine.promptnews.data.SearchUi
@@ -337,7 +337,6 @@ fun SearchScreen(
         12.dp
     }
     val topicImageResolver = remember { TopicImageResolver() }
-    val placeholderPainter = painterResource(R.drawable.ic_topic_placeholder)
 
     Column(modifier = Modifier.fillMaxSize()) {
         PromptNewsTopBar(
@@ -368,13 +367,14 @@ fun SearchScreen(
                     LazyRow(
                         state = rowState,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(horizontal = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
                         flingBehavior = rememberSnapFlingBehavior(rowState)
                     ) {
                         items(section.topics, key = { it.id }) { topic ->
-                            TopicCarouselCard(
-                                topic = topic,
-                                imageResolver = topicImageResolver,
+                            val imageState by rememberTopicImage(topic, topicImageResolver)
+                            TopicThumbnailItem(
+                                title = topic.title,
+                                imageUrl = imageState.url,
                                 onClick = { runChipSearch(topic.searchQuery) }
                             )
                         }
@@ -459,9 +459,9 @@ fun SearchScreen(
                                             model = u,
                                             contentDescription = null,
                                             contentScale = ContentScale.Crop,
-                                            placeholder = placeholderPainter,
-                                            error = placeholderPainter,
-                                            fallback = placeholderPainter,
+                                            placeholder = rememberVectorPainter(Icons.Default.Image),
+                                            error = rememberVectorPainter(Icons.Default.Image),
+                                            fallback = rememberVectorPainter(Icons.Default.Image),
                                             modifier = Modifier
                                                 .size(110.dp)
                                                 .clip(RoundedCornerShape(12.dp))
@@ -598,6 +598,9 @@ private class TopicImageResolver {
     private val cacheMutex = Mutex()
 
     suspend fun resolve(topic: SearchTopicUiModel): String {
+        if (!topic.imageUrl.isNullOrBlank()) {
+            return topic.imageUrl
+        }
         val query = serpQueryFor(topic)
         val cacheKey = "${topic.topicType}:${query ?: topic.title}"
         cacheMutex.withLock {
@@ -617,7 +620,7 @@ private class TopicImageResolver {
     }
 
     private fun serpQueryFor(topic: SearchTopicUiModel): String? {
-        val base = topic.entityQuery ?: return null
+        val base = topic.entityQuery ?: topic.title
         return when (topic.topicType) {
             TopicType.PERSON -> "$base portrait"
             TopicType.SPORTS_LEAGUE -> if (base.contains("football", ignoreCase = true)) base else "$base football logo"
@@ -739,93 +742,47 @@ private const val genericPlaceholderImage =
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TopicCarouselCard(
-    topic: SearchTopicUiModel,
-    imageResolver: TopicImageResolver,
+fun TopicThumbnailItem(
+    title: String,
+    imageUrl: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
-        onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
+    val placeholderPainter = rememberVectorPainter(Icons.Default.Image)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
-            .width(220.dp)
-            .height(280.dp)
+            .widthIn(min = 88.dp, max = 104.dp)
+            .clickable(onClick = onClick)
     ) {
-        Box {
-            val imageState by rememberTopicImage(topic, imageResolver)
-            val placeholderPainter = painterResource(R.drawable.ic_topic_placeholder)
-            val imageUrl = imageState.url
-            if (imageState.isLoading || imageUrl.isNullOrBlank()) {
-                Image(
-                    painter = placeholderPainter,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-                if (!imageState.isLoading && imageUrl.isNullOrBlank()) {
-                    Log.w(TAG, "Topic image URL missing. Showing placeholder for ${topic.title}.")
-                }
-            } else {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                    placeholder = placeholderPainter,
-                    error = placeholderPainter,
-                    onSuccess = {
-                        Log.d(TAG, "Topic image loaded for ${topic.title}: $imageUrl")
-                    },
-                    onError = { error ->
-                        Log.w(
-                            TAG,
-                            "Topic image failed for ${topic.title}: $imageUrl",
-                            error.result.throwable
-                        )
-                    }
-                )
-            }
-            Box(
+        Surface(
+            shape = CircleShape,
+            tonalElevation = 2.dp,
+            shadowElevation = 2.dp,
+            modifier = Modifier
+                .size(82.dp)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+        ) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                placeholder = placeholderPainter,
+                error = placeholderPainter,
+                fallback = placeholderPainter,
                 modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color(0xAA000000))
-                        )
-                    )
+                    .fillMaxSize()
+                    .clip(CircleShape)
             )
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(12.dp)
-            ) {
-                topic.badge?.let { badge ->
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0xFF2563EB), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            badge.uppercase(),
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    }
-                    Spacer(Modifier.height(6.dp))
-                }
-                Text(
-                    topic.title,
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
         }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            title,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
     }
 }
 
@@ -877,7 +834,7 @@ private fun HeroCard(article: Article, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Box {
-            val placeholderPainter = painterResource(R.drawable.ic_topic_placeholder)
+            val placeholderPainter = rememberVectorPainter(Icons.Default.Image)
             AsyncImage(
                 model = article.imageUrl,
                 contentDescription = null,
@@ -949,7 +906,7 @@ private fun RowCard(a: Article, onClick: () -> Unit) {
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.Top
     ) {
-        val placeholderPainter = painterResource(R.drawable.ic_topic_placeholder)
+        val placeholderPainter = rememberVectorPainter(Icons.Default.Image)
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
@@ -1026,7 +983,7 @@ private fun ClipCard(c: Clip, onClick: () -> Unit) {
         modifier = Modifier.width(190.dp)
     ) {
         Box {
-            val placeholderPainter = painterResource(R.drawable.ic_topic_placeholder)
+            val placeholderPainter = rememberVectorPainter(Icons.Default.Image)
             AsyncImage(
                 model = c.thumbnail,
                 contentDescription = null,
