@@ -112,8 +112,10 @@ private fun SportsScreenContent(
     ) {
         PromptNewsTopBar(title = "PromptNews", showBack = showBack, onBack = onBack)
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, bottom = 24.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             when (val state = uiState) {
                 is SportsUiState.Idle -> {
