@@ -1,35 +1,56 @@
 package com.digitalturbine.promptnews.data.sports
 
-data class TeamOverview(
-    val title: String?,
-    val ranking: String?,
-    val thumbnail: String?
-)
-
-data class VideoHighlights(
-    val link: String?,
-    val thumbnail: String?
-)
-
-data class SportsTeam(
+data class TeamModel(
     val name: String?,
+    val logoUrl: String?,
     val score: String?,
-    val thumbnail: String?
+    val isWinner: Boolean?
 )
 
-data class SportsGame(
-    val date: String?,
-    val time: String?,
+data class LeagueContextModel(
     val league: String?,
-    val status: String?,
-    val teams: List<SportsTeam>,
-    val score: String?,
-    val videoHighlights: VideoHighlights?
+    val tournament: String?,
+    val stage: String?,
+    val round: String?,
+    val week: String?
+)
+
+data class HighlightModel(
+    val link: String?,
+    val thumbnail: String?,
+    val duration: String?
+)
+
+data class SportsMatchModel(
+    val id: String?,
+    val context: LeagueContextModel?,
+    val homeTeam: TeamModel?,
+    val awayTeam: TeamModel?,
+    val statusText: String?,
+    val dateText: String?,
+    val highlight: HighlightModel?,
+    val matchLink: String?
+)
+
+data class SportsHeaderModel(
+    val title: String?,
+    val subtitle: String?,
+    val thumbnail: String?,
+    val tabs: List<String>
 )
 
 data class SportsResults(
-    val teamOverview: TeamOverview?,
-    val liveGame: SportsGame?,
-    val recentGames: List<SportsGame>,
-    val upcomingGames: List<SportsGame>
+    val header: SportsHeaderModel?,
+    val matches: List<SportsMatchModel>
 )
+
+fun LeagueContextModel?.displayText(): String? {
+    if (this == null) return null
+    val primary = tournament ?: league
+    val secondary = listOfNotNull(stage, round, week)
+    val parts = buildList {
+        primary?.let { add(it) }
+        addAll(secondary)
+    }
+    return parts.joinToString(" · ").ifBlank { null }
+}

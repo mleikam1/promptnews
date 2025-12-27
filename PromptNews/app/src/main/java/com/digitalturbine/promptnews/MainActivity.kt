@@ -37,7 +37,8 @@ import com.digitalturbine.promptnews.ui.home.HomeScreen
 import com.digitalturbine.promptnews.ui.history.HistoryScreen
 import com.digitalturbine.promptnews.ui.search.SearchScreen
 import com.digitalturbine.promptnews.ui.search.SearchScreenState
-import com.digitalturbine.promptnews.ui.sports.SportsSearchScreen
+import com.digitalturbine.promptnews.ui.sports.SportsScreen
+import com.digitalturbine.promptnews.util.isSportsIntent
 import com.digitalturbine.promptnews.util.HomePrefs
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
@@ -148,16 +149,21 @@ class MainActivity : ComponentActivity() {
                                 navArgument("source") { defaultValue = "" }
                             )
                         ) { backStackEntry ->
-                            SearchScreen(
-                                initialQuery = backStackEntry.arguments?.getString("query"),
-                                initialSource = backStackEntry.arguments?.getString("source"),
-                                screenState = SearchScreenState.Results,
-                                onSearchRequested = { query, source ->
-                                    // Each follow-up prompt creates its own results entry.
-                                    navController.navigate(Dest.SearchResults.routeFor(query, source))
-                                },
-                                onBack = { navController.popBackStack() }
-                            )
+                            val query = backStackEntry.arguments?.getString("query").orEmpty()
+                            if (isSportsIntent(query)) {
+                                SportsScreen(query = query)
+                            } else {
+                                SearchScreen(
+                                    initialQuery = query,
+                                    initialSource = backStackEntry.arguments?.getString("source"),
+                                    screenState = SearchScreenState.Results,
+                                    onSearchRequested = { newQuery, source ->
+                                        // Each follow-up prompt creates its own results entry.
+                                        navController.navigate(Dest.SearchResults.routeFor(newQuery, source))
+                                    },
+                                    onBack = { navController.popBackStack() }
+                                )
+                            }
                         }
                         composable(Dest.Home.route) {
                             HomeScreen { query ->
@@ -169,7 +175,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         composable(Dest.Sports.route) {
-                            SportsSearchScreen()
+                            SportsScreen(query = "Live scores")
                         }
                         composable(Dest.History.route) {
                             HistoryScreen(onEntrySelected = { entry ->

@@ -1,264 +1,91 @@
 package com.digitalturbine.promptnews.ui.sports
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.stickyHeader
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.SportsBaseball
-import androidx.compose.material.icons.filled.SportsBasketball
-import androidx.compose.material.icons.filled.SportsFootball
-import androidx.compose.material.icons.filled.SportsHockey
-import androidx.compose.material.icons.filled.SportsSoccer
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import coil.compose.rememberAsyncImagePainter
-import com.digitalturbine.promptnews.data.sports.SportsGame
-import com.digitalturbine.promptnews.data.sports.SportsResults
-import com.digitalturbine.promptnews.data.sports.SportsTeam
+import com.digitalturbine.promptnews.data.sports.HighlightModel
+import com.digitalturbine.promptnews.data.sports.LeagueContextModel
+import com.digitalturbine.promptnews.data.sports.SportsHeaderModel
+import com.digitalturbine.promptnews.data.sports.SportsMatchModel
+import com.digitalturbine.promptnews.data.sports.TeamModel
+import com.digitalturbine.promptnews.data.sports.displayText
 
-data class SportFilter(
-    val name: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val accent: Color
-)
-
-private val sportFilters = listOf(
-    SportFilter("All", Icons.Filled.Star, Color(0xFF2563EB)),
-    SportFilter("Basketball", Icons.Filled.SportsBasketball, Color(0xFFF97316)),
-    SportFilter("Football", Icons.Filled.SportsFootball, Color(0xFFEF4444)),
-    SportFilter("Soccer", Icons.Filled.SportsSoccer, Color(0xFF16A34A)),
-    SportFilter("Baseball", Icons.Filled.SportsBaseball, Color(0xFF0EA5E9)),
-    SportFilter("Hockey", Icons.Filled.SportsHockey, Color(0xFF6366F1))
-)
-
-private val teamSuggestions = listOf(
-    "Los Angeles Lakers",
-    "Golden State Warriors",
-    "Boston Celtics",
-    "Dallas Cowboys",
-    "Kansas City Chiefs",
-    "New York Yankees",
-    "Los Angeles Dodgers",
-    "Manchester City",
-    "FC Barcelona",
-    "Real Madrid",
-    "Paris Saint-Germain",
-    "Toronto Maple Leafs",
-    "Edmonton Oilers",
-    "Inter Miami"
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SportsSearchScreen(
-    vm: SportsViewModel = viewModel()
+fun SportsScreen(
+    query: String?,
+    vm: SportsViewModel = viewModel(),
+    onMatchSelected: (SportsMatchModel) -> Unit = {},
+    onHighlightSelected: (HighlightModel) -> Unit = {}
 ) {
     val uiState by vm.uiState.collectAsState()
-    var query by remember { mutableStateOf("") }
-    var selectedFilter by remember { mutableStateOf(sportFilters.first()) }
+
+    LaunchedEffect(query) {
+        query?.takeIf { it.isNotBlank() }?.let { vm.search(it) }
+    }
 
     SportsScreenContent(
         uiState = uiState,
-        query = query,
-        selectedFilter = selectedFilter,
-        onQueryChange = { query = it },
-        onFilterSelected = { selectedFilter = it },
-        onSearch = { vm.search(it, selectedFilter) }
+        onMatchSelected = onMatchSelected,
+        onHighlightSelected = onHighlightSelected
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun SportsScreenContent(
+private fun SportsScreenContent(
     uiState: SportsUiState,
-    query: String,
-    selectedFilter: SportFilter,
-    onQueryChange: (String) -> Unit,
-    onFilterSelected: (SportFilter) -> Unit,
-    onSearch: (String) -> Unit
+    onMatchSelected: (SportsMatchModel) -> Unit,
+    onHighlightSelected: (HighlightModel) -> Unit
 ) {
-    var selectedGame by remember { mutableStateOf<SportsGame?>(null) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    val suggestions = remember(query) {
-        if (query.isBlank()) {
-            emptyList()
-        } else {
-            teamSuggestions.filter { it.contains(query, ignoreCase = true) }.take(6)
-        }
-    }
-
-    if (selectedGame != null) {
-        ModalBottomSheet(
-            onDismissRequest = { selectedGame = null },
-            sheetState = sheetState
-        ) {
-            GameDetailModal(game = selectedGame!!)
-        }
-    }
-
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
+            .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(bottom = 24.dp)
     ) {
-        item {
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = "Sports Scores",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.ExtraBold
-            )
-            Spacer(Modifier.height(12.dp))
-                TextField(
-                    value = query,
-                    onValueChange = onQueryChange,
-                    placeholder = { Text("Search for a team or sport") },
-                    leadingIcon = {
-                        IconButton(onClick = { onSearch(query) }) {
-                            Icon(Icons.Filled.SportsSoccer, contentDescription = null)
-                        }
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(
-                        onSearch = { onSearch(query) }
-                    ),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 52.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor = selectedFilter.accent
-                )
-            )
-            AnimatedVisibility(
-                visible = suggestions.isNotEmpty(),
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            MaterialTheme.colorScheme.surface,
-                            RoundedCornerShape(12.dp)
-                        )
-                        .padding(8.dp)
-                ) {
-                    suggestions.forEach { suggestion ->
-                        Text(
-                            text = suggestion,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onQueryChange(suggestion)
-                                    onSearch(suggestion)
-                                }
-                                .padding(vertical = 8.dp, horizontal = 12.dp),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(sportFilters) { filter ->
-                    AssistChip(
-                        onClick = { onFilterSelected(filter) },
-                        label = { Text(filter.name) },
-                        leadingIcon = {
-                            Icon(filter.icon, contentDescription = null, modifier = Modifier.size(18.dp))
-                        },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = if (filter == selectedFilter) {
-                                filter.accent.copy(alpha = 0.2f)
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant
-                            },
-                            labelColor = MaterialTheme.colorScheme.onSurface,
-                            leadingIconContentColor = filter.accent
-                        )
-                    )
-                }
-            }
-            Spacer(Modifier.height(20.dp))
-        }
-
         when (val state = uiState) {
             is SportsUiState.Idle -> {
                 item {
@@ -266,6 +93,17 @@ internal fun SportsScreenContent(
                 }
             }
             is SportsUiState.Loading -> {
+                stickyHeader {
+                    SportsHeader(
+                        header = SportsHeaderModel(
+                            title = state.query,
+                            subtitle = null,
+                            thumbnail = null,
+                            tabs = listOf("Matches", "News", "Standings")
+                        )
+                    )
+                }
+                item { Spacer(Modifier.height(12.dp)) }
                 item { SportsSkeleton() }
             }
             is SportsUiState.Error -> {
@@ -279,44 +117,267 @@ internal fun SportsScreenContent(
                 }
             }
             is SportsUiState.Ready -> {
-                val accent = selectedFilter.accent
-                item {
-                    TeamOverviewCard(results = state.results, accent = accent)
-                }
-                item {
-                    Spacer(Modifier.height(16.dp))
-                }
-                state.results.liveGame?.let { game ->
-                    item {
-                        LiveMatchHero(game = game, accent = accent)
-                        Spacer(Modifier.height(16.dp))
+                val header = state.results.header
+                if (header != null) {
+                    stickyHeader {
+                        SportsHeader(header = header)
                     }
                 }
-                item {
-                    GamesCarousel(
-                        title = "Recent Games",
-                        games = state.results.recentGames,
-                        accent = accent,
-                        onGameSelected = { selectedGame = it }
+                if (state.results.matches.isEmpty()) {
+                    item { NoResultsState() }
+                } else {
+                    item { Spacer(Modifier.height(12.dp)) }
+                    items(state.results.matches) { match ->
+                        MatchCard(
+                            match = match,
+                            onMatchSelected = onMatchSelected,
+                            onHighlightSelected = onHighlightSelected
+                        )
+                        Spacer(Modifier.height(12.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SportsHeader(header: SportsHeaderModel) {
+    Surface(
+        color = MaterialTheme.colorScheme.primary,
+        shadowElevation = 4.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AsyncImage(
+                    model = header.thumbnail,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f))
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = header.title.orEmpty(),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+                    header.subtitle?.let { subtitle ->
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
-                item {
-                    Spacer(Modifier.height(12.dp))
-                }
-                item {
-                    GamesCarousel(
-                        title = "Upcoming Games",
-                        games = state.results.upcomingGames,
-                        accent = accent,
-                        onGameSelected = { selectedGame = it }
+            }
+            Spacer(Modifier.height(12.dp))
+            TabsRow(tabs = header.tabs)
+        }
+    }
+}
+
+@Composable
+private fun TabsRow(tabs: List<String>) {
+    val items = if (tabs.isEmpty()) listOf("Matches", "News", "Standings") else tabs
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        items.forEachIndexed { index, title ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = title.uppercase(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Medium
+                )
+                Spacer(Modifier.height(6.dp))
+                if (index == 0) {
+                    Box(
+                        modifier = Modifier
+                            .height(3.dp)
+                            .width(28.dp)
+                            .background(MaterialTheme.colorScheme.onPrimary)
                     )
+                } else {
+                    Spacer(Modifier.height(3.dp))
                 }
-                item {
-                    Spacer(Modifier.height(20.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun MatchCard(
+    match: SportsMatchModel,
+    onMatchSelected: (SportsMatchModel) -> Unit,
+    onHighlightSelected: (HighlightModel) -> Unit
+) {
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clickable { onMatchSelected(match) },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            MatchContextRow(context = match.context)
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TeamRow(team = match.homeTeam)
+                    TeamRow(team = match.awayTeam)
                 }
-                item {
-                    StatsSection(results = state.results, accent = accent)
+                Spacer(Modifier.width(12.dp))
+                StatusDateColumn(status = match.statusText, date = match.dateText)
+                match.highlight?.let { highlight ->
+                    Spacer(Modifier.width(12.dp))
+                    HighlightThumbnail(highlight = highlight, onClick = { onHighlightSelected(highlight) })
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MatchContextRow(context: LeagueContextModel?) {
+    val text = context.displayText() ?: return
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+@Composable
+private fun TeamRow(team: TeamModel?) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        AsyncImage(
+            model = team?.logoUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(22.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = team?.name ?: "TBD",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (team?.isWinner == true) FontWeight.Bold else FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = team?.score ?: "-",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (team?.isWinner == true) FontWeight.Bold else FontWeight.Medium,
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+@Composable
+private fun StatusDateColumn(status: String?, date: String?) {
+    Column(horizontalAlignment = Alignment.End) {
+        Text(
+            text = status ?: "TBD",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        date?.let {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun HighlightThumbnail(
+    highlight: HighlightModel,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(width = 96.dp, height = 64.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+    ) {
+        AsyncImage(
+            model = highlight.thumbnail,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.1f))
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.55f))
+        ) {
+            androidx.compose.material3.Icon(
+                imageVector = Icons.Filled.PlayArrow,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
+        highlight.duration?.let { duration ->
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(6.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color.Black.copy(alpha = 0.65f))
+            ) {
+                Text(
+                    text = duration,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
             }
         }
     }
@@ -327,19 +388,21 @@ private fun EmptySportsState() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 32.dp),
+            .padding(vertical = 32.dp, horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "Find the latest scores, highlights, and standings.",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            text = "Search for a team to get live match updates.",
+            text = "Run a sports prompt or search to see live match updates.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
         )
     }
 }
@@ -366,499 +429,50 @@ private fun NoResultsState() {
             .padding(vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "No results found.", style = MaterialTheme.typography.titleMedium)
+        Text(text = "No games found for this query", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Try another team or adjust the filter.",
+            text = "Try another team or league.",
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
-}
-
-@Composable
-private fun TeamOverviewCard(results: SportsResults, accent: Color) {
-    val overview = results.teamOverview
-    ElevatedCard(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(0.7f)
-            ) {
-                AsyncImage(
-                    model = overview?.thumbnail,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                )
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = overview?.title ?: "Team overview",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    overview?.ranking?.let {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = "Ranking: $it",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Button(onClick = { }) {
-                    Text("Follow")
-                }
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = { }) {
-                    Icon(Icons.Filled.Share, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Share")
-                }
-            }
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .background(accent)
-        )
-    }
-}
-
-@Composable
-private fun LiveMatchHero(game: SportsGame, accent: Color) {
-    val transition = rememberInfiniteTransition(label = "livePulse")
-    val pulse by transition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.9f,
-        animationSpec = infiniteRepeatable(tween(1200), RepeatMode.Reverse),
-        label = "livePulseAlpha"
-    )
-    val gradient = Brush.horizontalGradient(
-        listOf(accent.copy(alpha = pulse), MaterialTheme.colorScheme.surface)
-    )
-
-    ElevatedCard(
-        shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .background(gradient)
-                .padding(16.dp)
-        ) {
-            Text(
-                text = game.status ?: "Live",
-                style = MaterialTheme.typography.labelLarge,
-                color = accent,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                TeamScoreBlock(
-                    team = game.teams.firstOrNull(),
-                    accent = accent,
-                    modifier = Modifier.fillMaxWidth(0.48f)
-                )
-                TeamScoreBlock(
-                    team = game.teams.getOrNull(1),
-                    accent = accent,
-                    alignEnd = true,
-                    modifier = Modifier.fillMaxWidth(0.48f)
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = game.league ?: "",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(12.dp))
-            Button(onClick = { }) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                Spacer(Modifier.width(6.dp))
-                Text("Play highlights")
-            }
-        }
-    }
-}
-
-@Composable
-private fun TeamScoreBlock(
-    team: SportsTeam?,
-    accent: Color,
-    alignEnd: Boolean = false,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (!alignEnd) {
-                Image(
-                    painter = rememberAsyncImagePainter(team?.thumbnail),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                )
-                Spacer(Modifier.width(8.dp))
-            }
-            Text(
-                text = team?.name ?: "TBD",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (alignEnd) {
-                Spacer(Modifier.width(8.dp))
-                Image(
-                    painter = rememberAsyncImagePainter(team?.thumbnail),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                )
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-        AnimatedContent(
-            targetState = team?.score ?: "-",
-            label = "score"
-        ) { score ->
-            Text(
-                text = score,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold,
-                color = accent
-            )
-        }
-    }
-}
-
-@Composable
-private fun GamesCarousel(
-    title: String,
-    games: List<SportsGame>,
-    accent: Color,
-    onGameSelected: (SportsGame) -> Unit
-) {
-    if (games.isEmpty()) {
-        return
-    }
-    Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-    Spacer(Modifier.height(8.dp))
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(games) { game ->
-            GameCard(game = game, accent = accent, onClick = { onGameSelected(game) })
-        }
-    }
-}
-
-@Composable
-private fun GameCard(game: SportsGame, accent: Color, onClick: () -> Unit) {
-    ElevatedCard(
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.width(240.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Surface(
-                    color = accent.copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        text = game.league ?: "League",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
-                Text(
-                    text = listOfNotNull(game.date, game.time).joinToString(" • "),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-            GameTeamsRow(game.teams)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = game.score ?: game.status.orEmpty(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = accent
-            )
-            game.videoHighlights?.link?.let {
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = accent)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Highlights", style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GameTeamsRow(teams: List<SportsTeam>) {
-    teams.take(2).forEachIndexed { index, team ->
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(0.75f)
-            ) {
-                Image(
-                    painter = rememberAsyncImagePainter(team.thumbnail),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = team.name ?: "TBD",
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Text(text = team.score ?: "-", style = MaterialTheme.typography.bodyMedium)
-        }
-        if (index == 0) {
-            Spacer(Modifier.height(4.dp))
-        }
-    }
-}
-
-@Composable
-private fun GameDetailModal(game: SportsGame) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp)
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text(
-            text = game.league ?: "Game details",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = listOfNotNull(game.date, game.time, game.status).joinToString(" • "),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(16.dp))
-        Text("Timeline", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "Timeline data will appear here when available.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(16.dp))
-        Text("Video highlights", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        game.videoHighlights?.link?.let { link ->
-            Text(text = link, color = MaterialTheme.colorScheme.primary)
-        } ?: Text(text = "No highlights available yet.")
-        Spacer(Modifier.height(16.dp))
-        Text("Stadium info", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Text("Venue details will show once provided by the league feed.")
-        Spacer(Modifier.height(16.dp))
-        Text("Stats breakdown", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Text("No detailed stats returned for this matchup yet.")
-        Spacer(Modifier.height(24.dp))
-    }
-}
-
-@Composable
-@OptIn(ExperimentalLayoutApi::class)
-private fun StatsSection(results: SportsResults, accent: Color) {
-    val teams = results.recentGames.firstOrNull()?.teams ?: emptyList()
-    val primaryTeam = teams.firstOrNull()?.name
-    val winLoss = calculateWinLoss(primaryTeam, results.recentGames)
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 12.dp)
-    ) {
-        Text("Standings", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    text = primaryTeam?.let { "$it standings" } ?: "Standings",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = results.teamOverview?.ranking?.let { "Current rank: $it" }
-                        ?: "Ranking unavailable",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
-        Spacer(Modifier.height(16.dp))
-        Text("Form & streak", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text("Recent form", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(4.dp))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        winLoss.form.forEach { symbol ->
-                            Surface(
-                                shape = CircleShape,
-                                color = if (symbol == "W") accent.copy(alpha = 0.2f) else Color(0xFFFEE2E2)
-                            ) {
-                                Text(
-                                    text = symbol,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    color = if (symbol == "W") accent else Color(0xFFDC2626)
-                                )
-                            }
-                        }
-                    }
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Record", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(4.dp))
-                    Text("${winLoss.wins}-${winLoss.losses}", fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-        Spacer(Modifier.height(16.dp))
-        Text("Head-to-head", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                results.recentGames.take(3).forEachIndexed { index, game ->
-                    Text(
-                        text = listOfNotNull(game.date, game.score).joinToString(" • ")
-                            .ifBlank { "Matchup details unavailable" },
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    if (index != 2) {
-                        Spacer(Modifier.height(6.dp))
-                        HorizontalDivider()
-                        Spacer(Modifier.height(6.dp))
-                    }
-                }
-                if (results.recentGames.isEmpty()) {
-                    Text("No recent head-to-head data yet.")
-                }
-            }
-        }
-    }
-}
-
-private data class WinLossSummary(
-    val wins: Int,
-    val losses: Int,
-    val form: List<String>
-)
-
-private fun calculateWinLoss(teamName: String?, games: List<SportsGame>): WinLossSummary {
-    if (teamName == null) return WinLossSummary(0, 0, listOf("-", "-", "-"))
-    var wins = 0
-    var losses = 0
-    val form = mutableListOf<String>()
-
-    games.take(5).forEach { game ->
-        val team = game.teams.firstOrNull { it.name == teamName }
-        val opponent = game.teams.firstOrNull { it.name != teamName }
-        val teamScore = team?.score?.toIntOrNull()
-        val oppScore = opponent?.score?.toIntOrNull()
-        if (teamScore != null && oppScore != null) {
-            if (teamScore >= oppScore) {
-                wins += 1
-                form.add("W")
-            } else {
-                losses += 1
-                form.add("L")
-            }
-        }
-    }
-    if (form.isEmpty()) {
-        form.addAll(listOf("-", "-", "-"))
-    }
-    return WinLossSummary(wins, losses, form)
 }
 
 @Composable
 private fun SportsSkeleton() {
+    val transition = rememberInfiniteTransition(label = "skeleton")
+    val shimmer by transition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 0.75f,
+        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+        label = "skeletonAlpha"
+    )
+
     Column(modifier = Modifier.fillMaxWidth()) {
         repeat(3) {
-            Surface(
+            ElevatedCard(
                 shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(0.5f)
-                            .height(16.dp)
-                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                            .height(12.dp)
+                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = shimmer))
                     )
                     Spacer(Modifier.height(12.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(120.dp)
-                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                            .height(56.dp)
+                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = shimmer * 0.9f))
                     )
                 }
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
         }
     }
 }

@@ -20,6 +20,15 @@ fun inferInterestFromTitle(title: String): String {
     }
 }
 
+fun isSportsIntent(query: String): Boolean {
+    val t = query.lowercase()
+    return Regex(
+        "\\b(nfl|nba|ncaa|mlb|nhl|soccer|premier league|la liga|serie a|bundesliga|ligue 1|" +
+            "mls|uefa|champions league|europa|world cup|score|scores|match|matches|standings|" +
+            "playoffs|final|highlights|fixtures|kickoff)\\b"
+    ).containsMatchIn(t)
+}
+
 @SuppressLint("NewApi")
 fun Instant.toEpochMillisCompat(): Long = toEpochMilli()
 
