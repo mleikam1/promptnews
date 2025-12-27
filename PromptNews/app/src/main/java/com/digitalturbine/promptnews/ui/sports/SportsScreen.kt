@@ -29,8 +29,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,7 +51,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.digitalturbine.promptnews.data.Article
+import com.digitalturbine.promptnews.data.Story
+import com.digitalturbine.promptnews.data.toArticle
 import com.digitalturbine.promptnews.data.sports.HighlightModel
 import com.digitalturbine.promptnews.data.sports.LeagueContextModel
 import com.digitalturbine.promptnews.data.sports.SportsHeaderModel
@@ -68,6 +71,8 @@ fun SportsScreen(
     onHighlightSelected: (HighlightModel) -> Unit = {}
 ) {
     val uiState by vm.uiState.collectAsState()
+    val feedState by vm.feedState.collectAsState()
+    val feedError by vm.feedError.collectAsState()
 
     LaunchedEffect(query) {
         query?.takeIf { it.isNotBlank() }?.let { vm.search(it) }
@@ -75,18 +80,24 @@ fun SportsScreen(
 
     SportsScreenContent(
         uiState = uiState,
+        feedState = feedState,
+        feedError = feedError,
         onMatchSelected = onMatchSelected,
         onHighlightSelected = onHighlightSelected,
-        onShortcutSelected = { vm.search(it) }
+        onShortcutSelected = { vm.search(it) },
+        onLoadMoreStories = { vm.loadMoreStories() }
     )
 }
 
 @Composable
 private fun SportsScreenContent(
     uiState: SportsUiState,
+    feedState: SportsFeedState,
+    feedError: String?,
     onMatchSelected: (SportsMatchModel) -> Unit,
     onHighlightSelected: (HighlightModel) -> Unit,
-    onShortcutSelected: (String) -> Unit
+    onShortcutSelected: (String) -> Unit,
+    onLoadMoreStories: () -> Unit
 ) {
     val context = LocalContext.current
     LazyColumn(
@@ -145,17 +156,6 @@ private fun SportsScreenContent(
                 }
                 item { InlineFallbackMessage(message = state.message) }
                 item { Spacer(Modifier.height(8.dp)) }
-                item {
-                    NewsSection(
-                        news = state.news,
-                        onArticleSelected = { url ->
-                            context.startActivity(
-                                Intent(context, ArticleWebViewActivity::class.java)
-                                    .putExtra("url", url)
-                            )
-                        }
-                    )
-                }
             }
             is SportsUiState.Fallback -> {
                 item {
@@ -166,6 +166,67 @@ private fun SportsScreenContent(
                         onShortcutSelected = onShortcutSelected
                     )
                 }
+            }
+        }
+        if (feedState.stories.isEmpty() && feedState.isLoading) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+        }
+        if (feedState.stories.isNotEmpty()) {
+            item { Spacer(Modifier.height(16.dp)) }
+            item {
+                Text(
+                    text = "Latest Stories",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+            item { Spacer(Modifier.height(8.dp)) }
+            feedState.stories.firstOrNull()?.let { story ->
+                item {
+                    val article = story.toArticle()
+                    HeroCard(
+                        article = article,
+                        onClick = {
+                            context.startActivity(
+                                Intent(context, ArticleWebViewActivity::class.java)
+                                    .putExtra("url", article.url)
+                            )
+                        }
+                    )
+                }
+                if (feedState.stories.size > 1) {
+                    item { Spacer(Modifier.height(12.dp)) }
+                }
+            }
+            items(feedState.stories.drop(1), key = { it.url }) { story ->
+                SportsStoryRow(
+                    story = story,
+                    onArticleSelected = { url ->
+                        context.startActivity(
+                            Intent(context, ArticleWebViewActivity::class.java)
+                                .putExtra("url", url)
+                        )
+                    }
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+            item {
+                SportsFeedFooter(
+                    isLoading = feedState.isLoading,
+                    canLoadMore = feedState.canLoadMore,
+                    errorMessage = feedError,
+                    onLoadMore = onLoadMoreStories
+                )
             }
         }
     }
@@ -456,15 +517,54 @@ private fun InlineFallbackMessage(message: String) {
 }
 
 @Composable
-private fun NewsSection(news: List<Article>, onArticleSelected: (String) -> Unit) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        val hero = news.firstOrNull()
-        hero?.let { item ->
-            HeroCard(article = item, onClick = { onArticleSelected(item.url) })
-            Spacer(Modifier.height(12.dp))
+private fun SportsStoryRow(story: Story, onArticleSelected: (String) -> Unit) {
+    val article = story.toArticle()
+    RowCard(a = article, onClick = { onArticleSelected(article.url) })
+}
+
+@Composable
+private fun SportsFeedFooter(
+    isLoading: Boolean,
+    canLoadMore: Boolean,
+    errorMessage: String?,
+    onLoadMore: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (canLoadMore) {
+            OutlinedButton(
+                onClick = onLoadMore,
+                enabled = !isLoading,
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .padding(end = 8.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
+                Text("More")
+            }
+        } else {
+            Text(
+                text = "You're all caught up",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
-        news.drop(1).forEach { article ->
-            RowCard(a = article, onClick = { onArticleSelected(article.url) })
+        errorMessage?.let { message ->
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
         }
     }
 }
