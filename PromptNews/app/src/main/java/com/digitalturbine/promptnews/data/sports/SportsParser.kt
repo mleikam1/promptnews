@@ -54,9 +54,9 @@ object SportsParser {
 
         val highlights = parseHighlights(obj)
         val scoredTeams = withWinnerFlags(teams)
-        val status = obj.firstString("status", "stage", "result")
+        val status = obj.firstString("status", "game_status", "status_display", "stage", "result", "state")
         val date = obj.firstString("date", "start_date", "game_date")
-        val time = obj.firstString("time", "start_time", "game_time")
+        val time = obj.firstString("time", "start_time", "game_time", "start_time_local", "time_local")
         val context = LeagueContextModel(
             league = obj.firstString("league", "sport"),
             tournament = obj.firstString("tournament"),
@@ -130,36 +130,53 @@ object SportsParser {
     }
 
     private fun parseTeams(obj: JSONObject): List<TeamModel> {
-        val teamsArray = obj.optJSONArray("teams")
         val teams = mutableListOf<TeamModel>()
+        val teamsArray = obj.optJSONArray("teams")
         if (teamsArray != null) {
             for (index in 0 until teamsArray.length()) {
                 val teamObj = teamsArray.optJSONObject(index) ?: continue
-                teams.add(
-                    TeamModel(
-                        name = teamObj.firstString("name", "team_name"),
-                        score = teamObj.firstString("score", "points"),
-                        logoUrl = teamObj.firstString("thumbnail", "logo"),
-                        isWinner = null
-                    )
-                )
+                parseTeam(teamObj)?.let { teams.add(it) }
             }
             return teams
         }
+
+        obj.optJSONObject("teams")?.let { teamsObject ->
+            val home = teamsObject.optJSONObject("home") ?: teamsObject.optJSONObject("home_team")
+            val away = teamsObject.optJSONObject("away") ?: teamsObject.optJSONObject("away_team")
+            val primaryPair = listOfNotNull(home, away)
+            val fallbackPair = listOfNotNull(
+                teamsObject.optJSONObject("team1"),
+                teamsObject.optJSONObject("team2")
+            )
+            val selectedTeams = if (primaryPair.isNotEmpty()) primaryPair else fallbackPair
+            selectedTeams.forEach { teamObj ->
+                parseTeam(teamObj)?.let { teams.add(it) }
+            }
+            if (teams.isNotEmpty()) return teams
+        }
+
         val homeTeam = obj.optJSONObject("home_team") ?: obj.optJSONObject("team1")
         val awayTeam = obj.optJSONObject("away_team") ?: obj.optJSONObject("team2")
         listOf(homeTeam, awayTeam).forEach { teamObj ->
-            if (teamObj == null) return@forEach
-            teams.add(
-                TeamModel(
-                    name = teamObj.firstString("name", "team_name"),
-                    score = teamObj.firstString("score", "points"),
-                    logoUrl = teamObj.firstString("thumbnail", "logo"),
-                    isWinner = null
-                )
-            )
+            parseTeam(teamObj)?.let { teams.add(it) }
         }
         return teams
+    }
+
+    private fun parseTeam(teamObj: JSONObject?): TeamModel? {
+        if (teamObj == null) return null
+        val nested = teamObj.optJSONObject("team")
+        val name = nested?.firstString("name", "team_name") ?: teamObj.firstString("name", "team_name")
+        val score = teamObj.firstString("score", "points", "runs", "goals")
+        val logo = nested?.firstString("thumbnail", "logo", "logo_url", "image")
+            ?: teamObj.firstString("thumbnail", "logo", "logo_url", "image")
+        if (name == null && score == null && logo == null) return null
+        return TeamModel(
+            name = name,
+            score = score,
+            logoUrl = logo,
+            isWinner = null
+        )
     }
 
     private fun parseHighlights(obj: JSONObject): HighlightModel? {
@@ -184,6 +201,7 @@ object SportsParser {
                 normalized.contains("quarter") ||
                 normalized.contains("inning") ||
                 normalized.contains("half") ||
+                normalized.contains("overtime") ||
                 normalized.contains("ot") ||
                 Regex("""\bq\d\b""").containsMatchIn(normalized)
             ) {
