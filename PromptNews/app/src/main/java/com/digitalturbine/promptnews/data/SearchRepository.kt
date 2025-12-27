@@ -134,6 +134,19 @@ class SearchRepository {
             }
         }
 
+    suspend fun fetchSerpNewsByOffset(query: String, limit: Int, offset: Int): List<Article> =
+        withContext(Dispatchers.IO) {
+            if (Config.serpApiKey.isBlank()) return@withContext emptyList<Article>()
+
+            fetchSerpNewsDtosByOffset(query, limit, offset).mapNotNull { dto ->
+                val unifiedStory = serpApiMapper.toUnifiedStory(dto)
+                unifiedStory.toArticle(
+                    ageLabel = dto.ageLabel,
+                    interest = inferInterest(dto.title)
+                )
+            }
+        }
+
     suspend fun fetchSerpNewsStories(query: String, page: Int, pageSize: Int = 20): List<UnifiedStory> =
         withContext(Dispatchers.IO) {
             if (Config.serpApiKey.isBlank()) return@withContext emptyList<UnifiedStory>()
@@ -141,6 +154,11 @@ class SearchRepository {
         }
 
     private fun fetchSerpNewsDtos(query: String, page: Int, pageSize: Int): List<SerpApiStoryDto> {
+        val start = page * pageSize
+        return fetchSerpNewsDtosByOffset(query, pageSize, start)
+    }
+
+    private fun fetchSerpNewsDtosByOffset(query: String, limit: Int, offset: Int): List<SerpApiStoryDto> {
         fun safeRequest(url: String): String? {
             return runCatching {
                 Http.client.newCall(Http.req(url)).execute().use { r ->
@@ -198,8 +216,8 @@ class SearchRepository {
             }
         }
 
-        val start = (page * pageSize).toString()
-        val num = pageSize.toString()
+        val start = offset.toString()
+        val num = limit.toString()
 
         var out: List<SerpApiStoryDto> = emptyList()
 
