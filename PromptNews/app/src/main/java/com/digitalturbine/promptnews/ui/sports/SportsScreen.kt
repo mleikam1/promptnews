@@ -113,7 +113,7 @@ private fun SportsScreenContent(
         PromptNewsTopBar(title = "PromptNews", showBack = showBack, onBack = onBack)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 24.dp)
+            contentPadding = PaddingValues(horizontal = 16.dp, bottom = 24.dp)
         ) {
             when (val state = uiState) {
                 is SportsUiState.Idle -> {
@@ -184,7 +184,7 @@ private fun SportsScreenContent(
                         text = "Latest Stories",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
                 item { Spacer(Modifier.height(8.dp)) }
@@ -239,7 +239,7 @@ private fun SportsHeader(header: SportsHeaderModel) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .padding(vertical = 14.dp)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
@@ -274,7 +274,6 @@ private fun MatchCard(
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
             .clickable { onMatchSelected(match) },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -441,7 +440,7 @@ private fun EmptySportsState() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 32.dp, horizontal = 24.dp),
+            .padding(vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -466,7 +465,7 @@ private fun InlineFallbackMessage(message: String) {
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(vertical = 12.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
         Text(
@@ -493,16 +492,14 @@ private fun GamesModule(
             text = "Games",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp)
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(8.dp))
         if (liveGames.isEmpty() && completedGames.isEmpty() && upcomingGames.isEmpty()) {
             Surface(
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = "No games scheduled today.",
@@ -546,7 +543,7 @@ private fun GamesSection(
         text = title,
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(horizontal = 16.dp)
+        modifier = Modifier.fillMaxWidth()
     )
     Spacer(Modifier.height(8.dp))
     matches.forEach { match ->
@@ -575,7 +572,7 @@ private fun SportsFeedFooter(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (canLoadMore) {
@@ -629,7 +626,6 @@ private fun SportsSkeleton() {
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Box(
