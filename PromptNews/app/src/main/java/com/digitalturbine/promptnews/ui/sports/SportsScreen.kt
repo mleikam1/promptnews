@@ -622,7 +622,6 @@ private fun SportsFeedFooter(
 }
 
 @Composable
-@Composable
 private fun SportsSkeleton() {
     val transition = rememberInfiniteTransition(label = "skeleton")
     val shimmer by transition.animateFloat(
