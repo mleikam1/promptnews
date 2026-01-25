@@ -1,6 +1,8 @@
 package com.digitalturbine.promptnews.ui.sports
 
 import android.content.Intent
+import android.util.Log
+import android.view.ViewGroup
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -48,8 +50,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.fragment.app.FragmentActivity
+import androidx.fragment.app.FragmentContainerView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.digitalturbine.promptnews.R
 import com.digitalturbine.promptnews.data.Story
 import com.digitalturbine.promptnews.data.toArticle
 import com.digitalturbine.promptnews.data.sports.HighlightModel
@@ -62,7 +68,8 @@ import com.digitalturbine.promptnews.data.sports.displayText
 import com.digitalturbine.promptnews.ui.PromptNewsTopBar
 import com.digitalturbine.promptnews.ui.components.HeroCard
 import com.digitalturbine.promptnews.ui.components.RowCard
-import com.digitalturbine.promptnews.ui.nfl.NflGamesWidgetHost
+import com.digitalturbine.promptnews.ui.nfl.NflGamesWidgetFragment
+import com.digitalturbine.promptnews.util.isSportsIntent
 import com.digitalturbine.promptnews.util.isNflIntent
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 
@@ -107,12 +114,23 @@ private fun SportsScreenContent(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val showWidget = when (uiState) {
+        is SportsUiState.Idle -> true
+        is SportsUiState.Loading -> isSportsIntent(uiState.query) || isNflIntent(uiState.query)
+        is SportsUiState.Loaded -> isSportsIntent(uiState.query) || isNflIntent(uiState.query)
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
         PromptNewsTopBar(title = "PromptNews", showBack = showBack, onBack = onBack)
+        NflGamesWidgetContainer(
+            showWidget = showWidget,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)
+        )
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -146,10 +164,6 @@ private fun SportsScreenContent(
                         )
                     }
                     item { Spacer(Modifier.height(12.dp)) }
-                    if (isNflIntent(state.query)) {
-                        item { NflGamesWidgetHost() }
-                        item { Spacer(Modifier.height(12.dp)) }
-                    }
                     item { SportsSkeleton() }
                 }
                 is SportsUiState.Loaded -> {
@@ -160,10 +174,6 @@ private fun SportsScreenContent(
                         }
                     }
                     item { Spacer(Modifier.height(12.dp)) }
-                    if (isNflIntent(state.query)) {
-                        item { NflGamesWidgetHost() }
-                        item { Spacer(Modifier.height(12.dp)) }
-                    }
                     state.inlineMessage?.let { message ->
                         item { InlineFallbackMessage(message = message) }
                         item { Spacer(Modifier.height(8.dp)) }
@@ -240,6 +250,39 @@ private fun SportsScreenContent(
             }
         }
     }
+}
+
+@Composable
+private fun NflGamesWidgetContainer(
+    showWidget: Boolean,
+    modifier: Modifier = Modifier
+) {
+    if (!showWidget) return
+    val context = LocalContext.current
+    val fragmentActivity = context as? FragmentActivity ?: return
+    val fragmentManager = fragmentActivity.supportFragmentManager
+    AndroidView(
+        modifier = modifier,
+        factory = { ctx ->
+            FragmentContainerView(ctx).apply {
+                id = R.id.nfl_games_widget_container
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+                if (fragmentManager.findFragmentById(R.id.nfl_games_widget_container) == null) {
+                    fragmentManager
+                        .beginTransaction()
+                        .replace(
+                            R.id.nfl_games_widget_container,
+                            NflGamesWidgetFragment.newInstance()
+                        )
+                        .commit()
+                    Log.d("NflGamesWidget", "[NFL WIDGET] Injected into SportsScreen")
+                }
+            }
+        }
+    )
 }
 
 @Composable
