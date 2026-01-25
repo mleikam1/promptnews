@@ -36,9 +36,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.digitalturbine.promptnews.data.sports.ApiSportsNflService
 import com.digitalturbine.promptnews.data.sports.NflGame
 import com.digitalturbine.promptnews.data.sports.NflGameStatus
+import com.digitalturbine.promptnews.data.sports.NflGamesRepository
 import com.digitalturbine.promptnews.util.isNflIntent
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -48,7 +48,7 @@ import java.util.Locale
 fun NflScoreboard(
     query: String,
     modifier: Modifier = Modifier,
-    service: ApiSportsNflService = remember { ApiSportsNflService() }
+    repository: NflGamesRepository = remember { NflGamesRepository() }
 ) {
     if (!isNflIntent(query)) return
 
@@ -57,7 +57,7 @@ fun NflScoreboard(
 
     LaunchedEffect(query) {
         isLoading.value = true
-        gamesState.value = service.fetchGames(query)
+        gamesState.value = repository.fetchRelevantNflGames()
         isLoading.value = false
     }
 
