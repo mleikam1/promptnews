@@ -26,7 +26,7 @@ object SportsParser {
 
         val matches = if (hasNormalizedGames(root)) {
             buildList {
-                root.optJSONObject("live_game")?.let { add(parseMatch(it, SportsMatchStatusBucket.LIVE)) }
+                root.optJSONObject("live_game")?.let { parseMatch(it, SportsMatchStatusBucket.LIVE)?.let { match -> add(match) } }
                 addAll(parseMatches(root.optJSONArray("recent_games"), SportsMatchStatusBucket.COMPLETED))
                 addAll(parseMatches(root.optJSONArray("upcoming_games"), SportsMatchStatusBucket.UPCOMING))
             }
@@ -148,7 +148,7 @@ object SportsParser {
                 teamsObject.optJSONObject("team1"),
                 teamsObject.optJSONObject("team2")
             )
-            val selectedTeams = if (primaryPair.isNotEmpty()) primaryPair else fallbackPair
+            val selectedTeams = primaryPair.ifEmpty { fallbackPair }
             selectedTeams.forEach { teamObj ->
                 parseTeam(teamObj)?.let { teams.add(it) }
             }
