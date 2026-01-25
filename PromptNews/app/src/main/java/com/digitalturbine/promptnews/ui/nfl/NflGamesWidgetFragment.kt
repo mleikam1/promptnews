@@ -20,14 +20,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
-import androidx.fragment.app.FragmentContainerView
-import androidx.fragment.app.commit
+import androidx.fragment.app.FragmentManager
 
 class NflGamesWidgetFragment : Fragment() {
 
     companion object {
         private const val TAG = "NflGamesWidget"
+        fun newInstance() = NflGamesWidgetFragment()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -131,13 +130,13 @@ class NflGamesWidgetFragment : Fragment() {
 @Composable
 fun NflGamesWidgetHost(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val fragmentActivity = context as? FragmentActivity ?: return
-    val fragmentManager = fragmentActivity.supportFragmentManager
+    val fragmentActivity = context as? androidx.fragment.app.FragmentActivity ?: return
+    val fragmentManager: FragmentManager = fragmentActivity.supportFragmentManager
     val containerId = remember { View.generateViewId() }
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
-            FragmentContainerView(ctx).apply {
+            FrameLayout(ctx).apply {
                 id = containerId
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -147,10 +146,10 @@ fun NflGamesWidgetHost(modifier: Modifier = Modifier) {
         },
         update = {
             if (fragmentManager.findFragmentById(containerId) == null) {
-                fragmentManager.commit {
-                    setReorderingAllowed(true)
-                    replace(containerId, NflGamesWidgetFragment())
-                }
+                fragmentManager
+                    .beginTransaction()
+                    .replace(containerId, NflGamesWidgetFragment.newInstance())
+                    .commit()
             }
         }
     )
