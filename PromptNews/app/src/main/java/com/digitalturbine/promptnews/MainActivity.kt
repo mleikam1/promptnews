@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -35,10 +36,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.digitalturbine.promptnews.ui.home.HomeScreen
 import com.digitalturbine.promptnews.ui.history.HistoryScreen
+import com.digitalturbine.promptnews.ui.search.CenteredLoadingStateView
 import com.digitalturbine.promptnews.ui.search.SearchScreen
 import com.digitalturbine.promptnews.ui.search.SearchScreenState
 import com.digitalturbine.promptnews.ui.sports.SportsScreen
-import com.digitalturbine.promptnews.util.isSportsIntent
+import com.digitalturbine.promptnews.data.sports.SportsRepository
 import com.digitalturbine.promptnews.util.HomePrefs
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
@@ -150,23 +152,40 @@ class MainActivity : ComponentActivity() {
                             )
                         ) { backStackEntry ->
                             val query = backStackEntry.arguments?.getString("query").orEmpty()
-                            if (isSportsIntent(query)) {
-                                SportsScreen(
-                                    query = query,
-                                    showBack = true,
-                                    onBack = { navController.popBackStack() }
-                                )
-                            } else {
-                                SearchScreen(
-                                    initialQuery = query,
-                                    initialSource = backStackEntry.arguments?.getString("source"),
-                                    screenState = SearchScreenState.Results,
-                                    onSearchRequested = { newQuery, source ->
-                                        // Each follow-up prompt creates its own results entry.
-                                        navController.navigate(Dest.SearchResults.routeFor(newQuery, source))
-                                    },
-                                    onBack = { navController.popBackStack() }
-                                )
+                            val sportsRepository = remember { SportsRepository() }
+                            val routeState by produceState<SearchResultsRoute>(initialValue = SearchResultsRoute.Loading, key1 = query) {
+                                if (query.isBlank()) {
+                                    value = SearchResultsRoute.News
+                                    return@produceState
+                                }
+                                val results = runCatching { sportsRepository.fetchSportsResults(query) }.getOrNull()
+                                val hasSports = results?.matches?.isNotEmpty() == true ||
+                                    results?.header?.title?.isNotBlank() == true
+                                value = if (hasSports) SearchResultsRoute.Sports else SearchResultsRoute.News
+                            }
+                            when (routeState) {
+                                SearchResultsRoute.Loading -> {
+                                    CenteredLoadingStateView(query = query, isLoading = true)
+                                }
+                                SearchResultsRoute.Sports -> {
+                                    SportsScreen(
+                                        query = query,
+                                        showBack = true,
+                                        onBack = { navController.popBackStack() }
+                                    )
+                                }
+                                SearchResultsRoute.News -> {
+                                    SearchScreen(
+                                        initialQuery = query,
+                                        initialSource = backStackEntry.arguments?.getString("source"),
+                                        screenState = SearchScreenState.Results,
+                                        onSearchRequested = { newQuery, source ->
+                                            // Each follow-up prompt creates its own results entry.
+                                            navController.navigate(Dest.SearchResults.routeFor(newQuery, source))
+                                        },
+                                        onBack = { navController.popBackStack() }
+                                    )
+                                }
                             }
                         }
                         composable(Dest.Home.route) {
@@ -284,4 +303,10 @@ private sealed class Dest(val route: String, val label: String, val icon: ImageV
             return "$route?query=${Uri.encode(query)}&source=${source.name}"
         }
     }
+}
+
+private enum class SearchResultsRoute {
+    Loading,
+    Sports,
+    News
 }

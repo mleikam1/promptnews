@@ -26,13 +26,13 @@ object SportsParser {
 
         val matches = if (hasNormalizedGames(root)) {
             buildList {
-                root.optJSONObject("live_game")?.let { parseMatch(it, SportsMatchStatusBucket.LIVE)?.let { match -> add(match) } }
-                addAll(parseMatches(root.optJSONArray("recent_games"), SportsMatchStatusBucket.COMPLETED))
-                addAll(parseMatches(root.optJSONArray("upcoming_games"), SportsMatchStatusBucket.UPCOMING))
+                root.optJSONObject("live_game")?.let { parseMatch(it, SportsMatchStatusBucket.LIVE, sportsRoot)?.let { match -> add(match) } }
+                addAll(parseMatches(root.optJSONArray("recent_games"), SportsMatchStatusBucket.COMPLETED, sportsRoot))
+                addAll(parseMatches(root.optJSONArray("upcoming_games"), SportsMatchStatusBucket.UPCOMING, sportsRoot))
             }
         } else {
             val games = flattenGames(sportsRoot)
-            games.mapNotNull { game -> parseMatch(game, null) }
+            games.mapNotNull { game -> parseMatch(game, null, sportsRoot) }
         }
 
         return SportsResults(
@@ -41,14 +41,14 @@ object SportsParser {
         )
     }
 
-    private fun parseMatches(array: JSONArray?, bucket: SportsMatchStatusBucket): List<SportsMatchModel> {
+    private fun parseMatches(array: JSONArray?, bucket: SportsMatchStatusBucket, sportsRoot: JSONObject): List<SportsMatchModel> {
         if (array == null) return emptyList()
         return (0 until array.length()).mapNotNull { index ->
-            array.optJSONObject(index)?.let { parseMatch(it, bucket) }
+            array.optJSONObject(index)?.let { parseMatch(it, bucket, sportsRoot) }
         }
     }
 
-    private fun parseMatch(obj: JSONObject, bucket: SportsMatchStatusBucket?): SportsMatchModel? {
+    private fun parseMatch(obj: JSONObject, bucket: SportsMatchStatusBucket?, sportsRoot: JSONObject): SportsMatchModel? {
         val teams = parseTeams(obj)
         if (teams.isEmpty()) return null
 
@@ -57,14 +57,16 @@ object SportsParser {
         val status = obj.firstString("status", "game_status", "status_display", "stage", "result", "state")
         val date = obj.firstString("date", "start_date", "game_date")
         val time = obj.firstString("time", "start_time", "game_time", "start_time_local", "time_local")
+        val resolvedLeague = resolveLeague(obj, sportsRoot)
         val context = LeagueContextModel(
-            league = obj.firstString("league", "sport"),
+            league = resolvedLeague,
             tournament = obj.firstString("tournament"),
             stage = obj.firstString("stage"),
+            stadium = obj.firstString("stadium", "venue", "location", "arena"),
             round = obj.firstString("round"),
             week = obj.firstString("week")
         )
-        val resolvedBucket = bucket ?: statusBucketFor(status, scoredTeams)
+        val resolvedBucket = bucket ?: statusBucketFor(status, scoredTeams, date)
 
         return SportsMatchModel(
             id = obj.firstString("id"),
@@ -182,6 +184,8 @@ object SportsParser {
     private fun parseHighlights(obj: JSONObject): HighlightModel? {
         val highlightObj = obj.optJSONObject("video_highlights")
             ?: obj.optJSONObject("highlights")
+            ?: obj.optJSONArray("video_highlights")?.optJSONObject(0)
+            ?: obj.optJSONArray("highlights")?.optJSONObject(0)
             ?: return null
         val link = highlightObj.firstString("link", "url")
         val thumbnail = highlightObj.firstString("thumbnail", "image")
@@ -190,33 +194,60 @@ object SportsParser {
         return HighlightModel(link = link, thumbnail = thumbnail, duration = duration)
     }
 
-    private fun statusBucketFor(status: String?, teams: List<TeamModel>): SportsMatchStatusBucket {
+    private fun statusBucketFor(status: String?, teams: List<TeamModel>, date: String?): SportsMatchStatusBucket {
         val normalized = status?.lowercase()
         val scorePresent = teams.size >= 2 && teams.any { !it.score.isNullOrBlank() }
-        if (normalized != null) {
-            if (normalized.contains("live") ||
-                normalized.contains("in progress") ||
-                normalized.contains("in-play") ||
-                normalized.contains("period") ||
-                normalized.contains("quarter") ||
-                normalized.contains("inning") ||
-                normalized.contains("half") ||
-                normalized.contains("overtime") ||
-                normalized.contains("ot") ||
-                Regex("""\bq\d\b""").containsMatchIn(normalized)
-            ) {
-                return SportsMatchStatusBucket.LIVE
-            }
-            if (normalized.contains("final") ||
-                normalized.contains("ended") ||
-                normalized.contains("ft") ||
-                normalized.contains("full") ||
-                normalized.contains("completed")
-            ) {
-                return SportsMatchStatusBucket.COMPLETED
-            }
+        if (normalized != null && (
+                normalized.contains("live") ||
+                    normalized.contains("in progress") ||
+                    normalized.contains("in-play") ||
+                    normalized.contains("quarter") ||
+                    normalized.contains("inning") ||
+                    normalized.contains("period") ||
+                    Regex("""\bq\d\b""").containsMatchIn(normalized)
+            )
+        ) {
+            return SportsMatchStatusBucket.LIVE
         }
-        return if (scorePresent) SportsMatchStatusBucket.COMPLETED else SportsMatchStatusBucket.UPCOMING
+        if (normalized != null && (
+                normalized.contains("ft") ||
+                    normalized.contains("final") ||
+                    normalized.contains("ended") ||
+                    normalized.contains("full") ||
+                    normalized.contains("completed")
+            )
+        ) {
+            return SportsMatchStatusBucket.COMPLETED
+        }
+        if (scorePresent) return SportsMatchStatusBucket.COMPLETED
+        return if (!date.isNullOrBlank()) SportsMatchStatusBucket.UPCOMING else SportsMatchStatusBucket.UPCOMING
+    }
+
+    private fun resolveLeague(obj: JSONObject, sportsRoot: JSONObject): String? {
+        val explicitLeague = obj.firstString("league", "league_name")
+            ?: sportsRoot.firstString("league", "league_name")
+        if (!explicitLeague.isNullOrBlank()) return explicitLeague
+        val tournament = obj.firstString("tournament") ?: sportsRoot.firstString("tournament")
+        if (!tournament.isNullOrBlank()) return tournament
+        val inferredSource = listOfNotNull(
+            obj.firstString("sport"),
+            sportsRoot.firstString("sport"),
+            obj.firstString("name"),
+            sportsRoot.firstString("title", "name")
+        ).joinToString(" ").lowercase()
+        return inferLeagueFromText(inferredSource)
+    }
+
+    private fun inferLeagueFromText(text: String?): String? {
+        if (text.isNullOrBlank()) return null
+        return when {
+            text.contains("nfl") -> "NFL"
+            text.contains("nba") -> "NBA"
+            text.contains("mlb") -> "MLB"
+            text.contains("nhl") -> "NHL"
+            text.contains("premier league") || text.contains("epl") -> "EPL"
+            else -> null
+        }
     }
 
     private fun parseRanking(rankings: Any?): String? {

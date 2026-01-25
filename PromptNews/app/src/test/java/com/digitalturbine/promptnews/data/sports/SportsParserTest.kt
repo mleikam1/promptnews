@@ -38,8 +38,8 @@ class SportsParserTest {
         assertNotNull(result)
         requireNotNull(result)
 
-        assertEquals("Golden State Warriors", result.teamOverview?.title)
-        assertEquals(1, result.recentGames.size)
-        assertEquals("NBA", result.recentGames.first().league)
+        assertEquals("Golden State Warriors", result.header?.title)
+        assertEquals(1, result.matches.size)
+        assertEquals("NBA", result.matches.first().context?.league)
     }
 }
