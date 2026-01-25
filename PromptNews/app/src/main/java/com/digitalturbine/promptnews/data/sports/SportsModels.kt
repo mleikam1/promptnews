@@ -11,6 +11,7 @@ data class LeagueContextModel(
     val league: String?,
     val tournament: String?,
     val stage: String?,
+    val stadium: String?,
     val round: String?,
     val week: String?
 )

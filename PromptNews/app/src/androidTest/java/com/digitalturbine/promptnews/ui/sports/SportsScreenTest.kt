@@ -6,10 +6,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import com.digitalturbine.promptnews.data.sports.SportsGame
+import com.digitalturbine.promptnews.data.sports.LeagueContextModel
+import com.digitalturbine.promptnews.data.sports.SportsHeaderModel
+import com.digitalturbine.promptnews.data.sports.SportsMatchModel
+import com.digitalturbine.promptnews.data.sports.SportsMatchStatusBucket
 import com.digitalturbine.promptnews.data.sports.SportsResults
-import com.digitalturbine.promptnews.data.sports.SportsTeam
-import com.digitalturbine.promptnews.data.sports.TeamOverview
+import com.digitalturbine.promptnews.data.sports.TeamModel
 import org.junit.Rule
 import org.junit.Test
 
@@ -21,27 +23,32 @@ class SportsScreenTest {
     @Test
     fun sportsScreenShowsTeamOverview() {
         val results = SportsResults(
-            teamOverview = TeamOverview(
+            header = SportsHeaderModel(
                 title = "Chicago Bulls",
-                ranking = "#3 East",
-                thumbnail = null
+                subtitle = "#3 East",
+                thumbnail = null,
+                tabs = listOf("Matches", "News", "Standings")
             ),
-            liveGame = null,
-            recentGames = listOf(
-                SportsGame(
-                    date = "2024-04-01",
-                    time = "7:00 PM",
-                    league = "NBA",
-                    status = "Final",
-                    teams = listOf(
-                        SportsTeam("Bulls", "105", null),
-                        SportsTeam("Heat", "98", null)
+            matches = listOf(
+                SportsMatchModel(
+                    id = "bulls-heat",
+                    context = LeagueContextModel(
+                        league = "NBA",
+                        tournament = null,
+                        stage = "Final",
+                        stadium = null,
+                        round = null,
+                        week = null
                     ),
-                    score = "105-98",
-                    videoHighlights = null
+                    homeTeam = TeamModel("Bulls", null, "105", true),
+                    awayTeam = TeamModel("Heat", null, "98", false),
+                    statusBucket = SportsMatchStatusBucket.COMPLETED,
+                    statusText = "Final",
+                    dateText = "7:00 PM",
+                    highlight = null,
+                    matchLink = null
                 )
-            ),
-            upcomingGames = emptyList()
+            )
         )
 
         composeRule.setContent {
@@ -62,6 +69,6 @@ class SportsScreenTest {
         }
 
         composeRule.onNodeWithText("Chicago Bulls").assertIsDisplayed()
-        composeRule.onNodeWithText("Recent Games").assertIsDisplayed()
+        composeRule.onNodeWithText("Matches").assertIsDisplayed()
     }
 }
