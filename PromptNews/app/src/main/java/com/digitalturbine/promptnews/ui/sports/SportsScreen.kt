@@ -62,6 +62,8 @@ import com.digitalturbine.promptnews.data.sports.displayText
 import com.digitalturbine.promptnews.ui.PromptNewsTopBar
 import com.digitalturbine.promptnews.ui.components.HeroCard
 import com.digitalturbine.promptnews.ui.components.RowCard
+import com.digitalturbine.promptnews.ui.nfl.NflGamesWidgetHost
+import com.digitalturbine.promptnews.util.isNflIntent
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 
 @Composable
@@ -144,6 +146,10 @@ private fun SportsScreenContent(
                         )
                     }
                     item { Spacer(Modifier.height(12.dp)) }
+                    if (isNflIntent(state.query)) {
+                        item { NflGamesWidgetHost() }
+                        item { Spacer(Modifier.height(12.dp)) }
+                    }
                     item { SportsSkeleton() }
                 }
                 is SportsUiState.Loaded -> {
@@ -154,6 +160,10 @@ private fun SportsScreenContent(
                         }
                     }
                     item { Spacer(Modifier.height(12.dp)) }
+                    if (isNflIntent(state.query)) {
+                        item { NflGamesWidgetHost() }
+                        item { Spacer(Modifier.height(12.dp)) }
+                    }
                     state.inlineMessage?.let { message ->
                         item { InlineFallbackMessage(message = message) }
                         item { Spacer(Modifier.height(8.dp)) }
