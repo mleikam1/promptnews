@@ -23,6 +23,9 @@ object Config {
     private const val SPORTS_API_BASE_URL_FALLBACK: String =
         "http://10.0.2.2:8080"
 
+    private const val NFL_API_SPORTS_KEY_FALLBACK: String =
+        "a0e5885563df89357f88f4bcc0b5bb9b"
+
     // ---- Helper: read optional BuildConfig fields safely --------------------
     private fun buildConfigStringOrNull(fieldName: String): String? = runCatching {
         val field = BuildConfig::class.java.getField(fieldName) // may not exist
@@ -41,6 +44,10 @@ object Config {
     /** Base URL for the Sports backend; empty string disables sports scores. */
     val sportsApiBaseUrl: String
         get() = buildConfigStringOrNull("SPORTS_API_BASE_URL") ?: SPORTS_API_BASE_URL_FALLBACK
+
+    /** API-Sports NFL key for direct client-side calls (POC only). */
+    val nflApiSportsKey: String
+        get() = buildConfigStringOrNull("NFL_API_SPORTS_KEY") ?: NFL_API_SPORTS_KEY_FALLBACK
 
     /** Feature flag: merge SerpAPI YouTube engine results into the Clips rail. */
     const val USE_SERP_FOR_YOUTUBE_BOOST: Boolean = true
