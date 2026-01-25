@@ -7,7 +7,8 @@ object SportsParser {
     fun parse(jsonStr: String): SportsResults? {
         if (jsonStr.isBlank()) return null
         val root = JSONObject(jsonStr)
-        val sportsRoot = root.optJSONObject("sports_results") ?: root
+        val sportsRoot = root.optJSONObject("sports_results")
+            ?: if (hasNormalizedGames(root)) root else return null
 
         val header = root.optJSONObject("team_overview")?.let { overview ->
             SportsHeaderModel(
@@ -24,7 +25,7 @@ object SportsParser {
             tabs = headerTabs(root, sportsRoot)
         )
 
-        val matches = if (hasNormalizedGames(root)) {
+        val matches = if (sportsRoot == root && hasNormalizedGames(root)) {
             buildList {
                 root.optJSONObject("live_game")?.let { parseMatch(it, SportsMatchStatusBucket.LIVE, sportsRoot)?.let { match -> add(match) } }
                 addAll(parseMatches(root.optJSONArray("recent_games"), SportsMatchStatusBucket.COMPLETED, sportsRoot))
@@ -94,12 +95,12 @@ object SportsParser {
     }
 
     private fun withWinnerFlags(teams: List<TeamModel>): List<TeamModel> {
-        val scores = teams.map { it.score?.toIntOrNull() }
+        val scores = teams.map { scoreValue(it.score) }
         if (scores.size < 2 || scores.any { it == null }) {
             return teams
         }
-        val first = scores[0]!!
-        val second = scores[1]!!
+        val first = scores[0] ?: return teams
+        val second = scores[1] ?: return teams
         return teams.mapIndexed { index, team ->
             val isWinner = if (first == second) null else {
                 if (index == 0) first > second else second > first
@@ -136,8 +137,18 @@ object SportsParser {
         val teamsArray = obj.optJSONArray("teams")
         if (teamsArray != null) {
             for (index in 0 until teamsArray.length()) {
-                val teamObj = teamsArray.optJSONObject(index) ?: continue
-                parseTeam(teamObj)?.let { teams.add(it) }
+                val entry = teamsArray.opt(index)
+                when (entry) {
+                    is JSONObject -> parseTeam(entry)?.let { teams.add(it) }
+                    is String -> teams.add(
+                        TeamModel(
+                            name = entry.ifBlank { null },
+                            score = null,
+                            logoUrl = null,
+                            isWinner = null
+                        )
+                    )
+                }
             }
             return teams
         }
@@ -196,13 +207,16 @@ object SportsParser {
 
     private fun statusBucketFor(status: String?, teams: List<TeamModel>, date: String?): SportsMatchStatusBucket {
         val normalized = status?.lowercase()
-        val scorePresent = teams.size >= 2 && teams.any { !it.score.isNullOrBlank() }
+        val scoreValues = teams.map { scoreValue(it.score) }
+        val hasAnyScore = scoreValues.any { it != null }
+        val hasTwoScores = scoreValues.count { it != null } >= 2
         if (normalized != null && (
                 normalized.contains("live") ||
                     normalized.contains("in progress") ||
                     normalized.contains("in-play") ||
                     normalized.contains("quarter") ||
                     normalized.contains("inning") ||
+                    normalized.contains("half") ||
                     normalized.contains("period") ||
                     Regex("""\bq\d\b""").containsMatchIn(normalized)
             )
@@ -219,8 +233,22 @@ object SportsParser {
         ) {
             return SportsMatchStatusBucket.COMPLETED
         }
-        if (scorePresent) return SportsMatchStatusBucket.COMPLETED
+        if (normalized != null && (
+                normalized.contains("scheduled") ||
+                    normalized.contains("upcoming")
+            )
+        ) {
+            return SportsMatchStatusBucket.UPCOMING
+        }
+        if (hasTwoScores) return SportsMatchStatusBucket.COMPLETED
+        if (hasAnyScore) return SportsMatchStatusBucket.LIVE
         return if (!date.isNullOrBlank()) SportsMatchStatusBucket.UPCOMING else SportsMatchStatusBucket.UPCOMING
+    }
+
+    private fun scoreValue(score: String?): Int? {
+        if (score.isNullOrBlank()) return null
+        val match = Regex("""\d+""").find(score)
+        return match?.value?.toIntOrNull()
     }
 
     private fun resolveLeague(obj: JSONObject, sportsRoot: JSONObject): String? {

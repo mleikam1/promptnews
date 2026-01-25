@@ -42,4 +42,37 @@ class SportsParserTest {
         assertEquals(1, result.matches.size)
         assertEquals("NBA", result.matches.first().context?.league)
     }
+
+    @Test
+    fun `parses serpapi sports_results with upcoming games`() {
+        val payload = """
+            {
+              "sports_results": {
+                "title": "Los Angeles Lakers",
+                "thumbnail": "lakers.png",
+                "rankings": "#4 West",
+                "upcoming_games": [
+                  {
+                    "status": "Scheduled",
+                    "date": "2024-10-01",
+                    "teams": [
+                      {"name": "Lakers", "thumbnail": "lal.png"},
+                      {"name": "Celtics", "thumbnail": "bos.png"}
+                    ]
+                  }
+                ]
+              }
+            }
+        """.trimIndent()
+
+        val result = SportsParser.parse(payload)
+        assertNotNull(result)
+        requireNotNull(result)
+
+        assertEquals("Los Angeles Lakers", result.header?.title)
+        assertEquals("#4 West", result.header?.subtitle)
+        assertEquals(1, result.matches.size)
+        assertEquals(SportsMatchStatusBucket.UPCOMING, result.matches.first().statusBucket)
+        assertEquals("Lakers", result.matches.first().homeTeam?.name)
+    }
 }
