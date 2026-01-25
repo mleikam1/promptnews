@@ -46,6 +46,7 @@ import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
 import com.digitalturbine.promptnews.data.net.Http
 import com.digitalturbine.promptnews.ui.PromptNewsTopBar
+import com.digitalturbine.promptnews.ui.components.NflScoreboard
 import com.digitalturbine.promptnews.ui.components.HeroCard
 import com.digitalturbine.promptnews.ui.components.RowCard
 import com.digitalturbine.promptnews.util.Config
@@ -400,6 +401,9 @@ fun SearchScreen(
 
                 when (val s = ui) {
                     is SearchUi.Ready -> {
+                        item {
+                            NflScoreboard(query = s.query)
+                        }
                         // Hero
                         s.hero?.let { hero ->
                             item {
