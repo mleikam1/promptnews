@@ -2,15 +2,7 @@ package com.digitalturbine.promptnews.ui.home
 
 import android.app.Activity
 import android.content.Intent
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -91,26 +83,36 @@ fun HomeScreen() {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .weight(1f),
+                        .weight(1f), // Modifier.weight in Column keeps the loader filling remaining space.
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
                 }
             }
             FollowingFeedState.Empty -> {
-                EmptyFollowingState(onPickInterests = {
-                    ctx.startActivity(Intent(ctx, OnboardingActivity::class.java))
-                    (ctx as? Activity)?.finish()
-                })
+                EmptyFollowingState(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f), // Modifier.weight in Column keeps the empty state filling remaining space.
+                    onPickInterests = {
+                        ctx.startActivity(Intent(ctx, OnboardingActivity::class.java))
+                        (ctx as? Activity)?.finish()
+                    }
+                )
             }
             is FollowingFeedState.Error -> {
-                ErrorFollowingState(message = state.message)
+                ErrorFollowingState(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f), // Modifier.weight in Column keeps the error state filling remaining space.
+                    message = state.message
+                )
             }
             is FollowingFeedState.Ready -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .weight(1f)
+                        .weight(1f) // Modifier.weight in Column keeps the feed filling remaining space.
                         .padding(horizontal = 16.dp),
                     contentPadding = PaddingValues(bottom = 88.dp)
                 ) {
@@ -150,11 +152,12 @@ fun HomeScreen() {
 }
 
 @Composable
-private fun EmptyFollowingState(onPickInterests: () -> Unit) {
+private fun EmptyFollowingState(
+    modifier: Modifier = Modifier,
+    onPickInterests: () -> Unit
+) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .weight(1f),
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -172,11 +175,12 @@ private fun EmptyFollowingState(onPickInterests: () -> Unit) {
 }
 
 @Composable
-private fun ErrorFollowingState(message: String) {
+private fun ErrorFollowingState(
+    modifier: Modifier = Modifier,
+    message: String
+) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .weight(1f),
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         Text(
