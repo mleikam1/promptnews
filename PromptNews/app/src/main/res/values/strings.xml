@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">promptnews</string>
+    <string name="home_top_stories">Top Stories</string>
+    <string name="home_local_stories">Local News</string>
+    <string name="home_local_stories_with_location">Local News \u2022 %1$s</string>
+    <string name="home_top_empty">No top stories available right now.</string>
+    <string name="home_local_empty">No local stories available right now.</string>
+    <string name="home_local_requires_location">Enable location access to see local headlines.</string>
+    <string name="home_error">Unable to load headlines.</string>
 </resources>

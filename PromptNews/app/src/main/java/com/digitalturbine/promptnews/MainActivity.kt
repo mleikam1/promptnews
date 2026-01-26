@@ -35,7 +35,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.digitalturbine.promptnews.ui.home.HomeScreen
+import com.digitalturbine.promptnews.ui.home.HomeFragmentHost
 import com.digitalturbine.promptnews.ui.history.HistoryScreen
 import com.digitalturbine.promptnews.ui.search.CenteredLoadingStateView
 import com.digitalturbine.promptnews.ui.search.SearchScreen
@@ -198,7 +198,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         composable(Dest.Home.route) {
-                            HomeScreen()
+                            HomeFragmentHost()
                         }
                         composable(Dest.Sports.route) {
                             SportsScreen(query = "Live scores", showBack = false, onBack = {})
