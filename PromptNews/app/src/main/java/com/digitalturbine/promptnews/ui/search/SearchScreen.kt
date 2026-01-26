@@ -46,7 +46,6 @@ import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
 import com.digitalturbine.promptnews.data.net.Http
 import com.digitalturbine.promptnews.ui.PromptNewsTopBar
-import com.digitalturbine.promptnews.ui.nfl.NflGamesWidgetHost
 import com.digitalturbine.promptnews.util.isNflIntent
 import com.digitalturbine.promptnews.ui.components.HeroCard
 import com.digitalturbine.promptnews.ui.components.RowCard
@@ -404,7 +403,7 @@ fun SearchScreen(
                     is SearchUi.Ready -> {
                         if (isNflIntent(s.query)) {
                             item {
-                                NflGamesWidgetHost()
+                                NflWidgetPlaceholder()
                             }
                         }
                         // Hero
@@ -711,6 +710,11 @@ private suspend fun fetchSerpApiImageUrl(
         Log.e(TAG, "SerpAPI request exception for query: $query", e)
         fallbackUrl
     }
+}
+
+@Composable
+private fun NflWidgetPlaceholder() {
+    // NFL widget temporarily disabled – class not present in this build.
 }
 
 private val categoryImageUrls = mapOf(
