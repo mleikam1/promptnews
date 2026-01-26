@@ -84,13 +84,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 val navController = rememberNavController()
-                val items = listOf(Dest.Search, Dest.Home, Dest.History)
+                val items = listOf(Dest.Home, Dest.Search, Dest.History)
                 var isGraphReady by remember { mutableStateOf(false) }
 
                 // The crash happens when navigate() calls findStartDestination() while the graph
                 // is still empty. Track readiness so we never navigate until nodes exist.
                 LaunchedEffect(navController) {
-                    Log.d("Nav", "startDestination=${Dest.Search.route}")
+                    Log.d("Nav", "startDestination=${Dest.Home.route}")
                     snapshotFlow { navController.graph }
                         .map { graph -> graph.nodes.size() > 0 }
                         .distinctUntilChanged()
@@ -132,7 +132,7 @@ class MainActivity : ComponentActivity() {
                 ) { pad ->
                     NavHost(
                         navController = navController,
-                        startDestination = Dest.Search.route,
+                        startDestination = Dest.Home.route,
                         modifier = Modifier.padding(pad)
                     ) {
                         composable(
@@ -298,7 +298,7 @@ class MainActivity : ComponentActivity() {
 
 private sealed class Dest(val route: String, val label: String, val icon: ImageVector) {
     data object Search : Dest("tab_search", "Prompt", Icons.Filled.Edit)
-    data object Home : Dest("tab_home", "Following", Icons.Filled.Home)
+    data object Home : Dest("tab_home", "Home", Icons.Filled.Home)
     data object Sports : Dest("tab_sports", "Sports", Icons.Filled.SportsSoccer)
     data object History : Dest("tab_history", "History", Icons.Filled.History)
     data object SearchResults : Dest("tab_search_results", "Results", Icons.Filled.Edit) {
