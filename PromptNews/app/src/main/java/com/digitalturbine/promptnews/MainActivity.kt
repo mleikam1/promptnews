@@ -10,7 +10,6 @@ import android.os.Bundle
 import android.util.Log
 import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -56,7 +55,7 @@ import java.util.Locale
 import kotlin.coroutines.resume
 import com.digitalturbine.promptnews.ui.onboarding.OnboardingActivity
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private val historyRepository by lazy { HistoryRepository.getInstance(applicationContext) }
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -313,3 +312,4 @@ private enum class SearchResultsRoute {
     Sports,
     News
 }
+import androidx.fragment.app.FragmentActivity
