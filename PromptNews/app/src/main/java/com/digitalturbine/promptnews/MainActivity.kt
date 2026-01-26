@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -44,6 +45,7 @@ import com.digitalturbine.promptnews.data.sports.SportsRepository
 import com.digitalturbine.promptnews.util.HomePrefs
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
+import com.digitalturbine.promptnews.data.UserInterestRepositoryImpl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -52,6 +54,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.coroutines.resume
+import com.digitalturbine.promptnews.ui.onboarding.OnboardingActivity
 
 class MainActivity : ComponentActivity() {
     private val historyRepository by lazy { HistoryRepository.getInstance(applicationContext) }
@@ -68,6 +71,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val interestRepo = UserInterestRepositoryImpl.getInstance(this)
+        if (!interestRepo.isOnboardingComplete()) {
+            startActivity(Intent(this, OnboardingActivity::class.java))
+            finish()
+            return
+        }
         lifecycleScope.launch {
             historyRepository.pruneOldEntries()
         }
@@ -189,13 +198,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         composable(Dest.Home.route) {
-                            HomeScreen { query ->
-                                if (!isGraphReady) {
-                                    return@HomeScreen
-                                }
-                                // Home searches should feel like forward navigation into results.
-                                navController.navigate(Dest.SearchResults.routeFor(query, HistoryType.SEARCH))
-                            }
+                            HomeScreen()
                         }
                         composable(Dest.Sports.route) {
                             SportsScreen(query = "Live scores", showBack = false, onBack = {})
@@ -295,7 +298,7 @@ class MainActivity : ComponentActivity() {
 
 private sealed class Dest(val route: String, val label: String, val icon: ImageVector) {
     data object Search : Dest("tab_search", "Prompt", Icons.Filled.Edit)
-    data object Home : Dest("tab_home", "Home", Icons.Filled.Home)
+    data object Home : Dest("tab_home", "Following", Icons.Filled.Home)
     data object Sports : Dest("tab_sports", "Sports", Icons.Filled.SportsSoccer)
     data object History : Dest("tab_history", "History", Icons.Filled.History)
     data object SearchResults : Dest("tab_search_results", "Results", Icons.Filled.Edit) {
