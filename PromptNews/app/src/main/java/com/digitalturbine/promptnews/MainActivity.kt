@@ -28,6 +28,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -312,4 +313,3 @@ private enum class SearchResultsRoute {
     Sports,
     News
 }
-import androidx.fragment.app.FragmentActivity
