@@ -21,6 +21,8 @@ import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.rss.GoogleNewsRepository
 import com.digitalturbine.promptnews.util.HomePrefs
 import com.digitalturbine.promptnews.util.TimeLabelFormatter
+import com.digitalturbine.promptnews.util.faviconFrom
+import com.digitalturbine.promptnews.util.inferInterestFromTitle
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -116,8 +118,12 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
                 return@launch
             }
 
-            val topStories = topResult.getOrDefault(emptyList()).toUiArticles("top")
-            val localStories = localResult.getOrDefault(emptyList()).toUiArticles("local")
+            val topStories = topResult.getOrDefault(emptyList())
+                .toUiArticles("top")
+                .take(TOP_STORIES_COUNT)
+            val localStories = localResult.getOrDefault(emptyList())
+                .toUiArticles("local")
+                .take(LOCAL_STORIES_TOTAL)
 
             topStoriesAdapter.submitList(topStories)
             localStoriesAdapter.submitList(localStories)
@@ -165,99 +171,131 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     }
 
     companion object {
+        private const val TOP_STORIES_COUNT = 7
+        private const val LOCAL_STORIES_TOTAL = 8
         fun newInstance() = HomeFragment()
     }
 }
 
 private class HomeArticleAdapter(
     private val onClick: (Article) -> Unit
-) : ListAdapter<Article, HomeArticleAdapter.HomeArticleViewHolder>(ArticleDiff) {
-    override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): HomeArticleViewHolder {
+) : ListAdapter<Article, SmallArticleViewHolder>(ArticleDiff) {
+    override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): SmallArticleViewHolder {
         val view = android.view.LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_home_article, parent, false)
-        return HomeArticleViewHolder(view, onClick)
+            .inflate(R.layout.item_local_article, parent, false)
+        return SmallArticleViewHolder(view, onClick)
     }
 
-    override fun onBindViewHolder(holder: HomeArticleViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: SmallArticleViewHolder, position: Int) {
         holder.bind(getItem(position))
-    }
-
-    class HomeArticleViewHolder(
-        itemView: View,
-        private val onClick: (Article) -> Unit
-    ) : RecyclerView.ViewHolder(itemView) {
-        private val titleView: TextView = itemView.findViewById(R.id.article_title)
-        private val metaView: TextView = itemView.findViewById(R.id.article_meta)
-        private val thumbnailView: ImageView = itemView.findViewById(R.id.article_thumbnail)
-
-        fun bind(article: Article) {
-            titleView.text = article.title
-            val meta = listOfNotNull(article.sourceName, article.ageLabel)
-                .joinToString(" • ")
-            metaView.text = meta
-            metaView.isVisible = meta.isNotBlank()
-            thumbnailView.load(article.imageUrl) {
-                placeholder(R.drawable.ic_topic_placeholder)
-                error(R.drawable.ic_topic_placeholder)
-            }
-            itemView.setOnClickListener { onClick(article) }
-        }
     }
 }
 
 private class LocalArticleAdapter(
     private val onClick: (Article) -> Unit
-) : ListAdapter<Article, LocalArticleAdapter.LocalArticleViewHolder>(ArticleDiff) {
-    override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): LocalArticleViewHolder {
-        val view = android.view.LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_local_article, parent, false)
-        return LocalArticleViewHolder(view, onClick)
+) : ListAdapter<Article, RecyclerView.ViewHolder>(ArticleDiff) {
+    override fun getItemViewType(position: Int): Int {
+        return if (position == 0) VIEW_TYPE_FEATURE else VIEW_TYPE_SMALL
     }
 
-    override fun onBindViewHolder(holder: LocalArticleViewHolder, position: Int) {
-        holder.bind(getItem(position))
-    }
-
-    class LocalArticleViewHolder(
-        itemView: View,
-        private val onClick: (Article) -> Unit
-    ) : RecyclerView.ViewHolder(itemView) {
-        private val titleView: TextView = itemView.findViewById(R.id.local_article_title)
-        private val metaView: TextView = itemView.findViewById(R.id.local_article_meta)
-        private val thumbnailView: ImageView = itemView.findViewById(R.id.local_article_thumbnail)
-        private val logoView: ImageView = itemView.findViewById(R.id.local_article_source_logo)
-        private val chipView: com.google.android.material.chip.Chip =
-            itemView.findViewById(R.id.local_article_chip)
-
-        fun bind(article: Article) {
-            titleView.text = article.title
-            val meta = listOfNotNull(article.sourceName, article.ageLabel)
-                .joinToString(" • ")
-            metaView.text = meta
-            metaView.isVisible = meta.isNotBlank()
-
-            thumbnailView.load(article.imageUrl) {
-                placeholder(R.drawable.ic_topic_placeholder)
-                error(R.drawable.ic_topic_placeholder)
-            }
-
-            if (article.logoUrl.isNotBlank()) {
-                logoView.load(article.logoUrl) {
-                    placeholder(R.drawable.ic_topic_placeholder)
-                    error(R.drawable.ic_topic_placeholder)
-                }
-            } else {
-                logoView.setImageResource(R.drawable.ic_topic_placeholder)
-            }
-            logoView.isVisible = true
-
-            val chipLabel = article.interest
-                .takeIf { it.isNotBlank() }
-                ?.replaceFirstChar { char -> char.titlecase() }
-            chipView.text = chipLabel
-            chipView.isVisible = !chipLabel.isNullOrBlank()
-            itemView.setOnClickListener { onClick(article) }
+    override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        val inflater = android.view.LayoutInflater.from(parent.context)
+        return if (viewType == VIEW_TYPE_FEATURE) {
+            val view = inflater.inflate(R.layout.item_local_feature_article, parent, false)
+            FeatureArticleViewHolder(view, onClick)
+        } else {
+            val view = inflater.inflate(R.layout.item_local_article, parent, false)
+            SmallArticleViewHolder(view, onClick)
         }
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        val article = getItem(position)
+        when (holder) {
+            is FeatureArticleViewHolder -> holder.bind(article)
+            is SmallArticleViewHolder -> holder.bind(article)
+        }
+    }
+
+    companion object {
+        private const val VIEW_TYPE_FEATURE = 0
+        private const val VIEW_TYPE_SMALL = 1
+    }
+}
+
+private class SmallArticleViewHolder(
+    itemView: View,
+    private val onClick: (Article) -> Unit
+) : RecyclerView.ViewHolder(itemView) {
+    private val titleView: TextView = itemView.findViewById(R.id.local_article_title)
+    private val metaView: TextView = itemView.findViewById(R.id.local_article_meta)
+    private val thumbnailView: ImageView = itemView.findViewById(R.id.local_article_thumbnail)
+    private val logoView: ImageView = itemView.findViewById(R.id.local_article_source_logo)
+    private val chipView: com.google.android.material.chip.Chip =
+        itemView.findViewById(R.id.local_article_chip)
+
+    fun bind(article: Article) {
+        titleView.text = article.title
+        val meta = listOfNotNull(article.sourceName, article.ageLabel)
+            .joinToString(" • ")
+        metaView.text = meta
+        metaView.isVisible = meta.isNotBlank()
+
+        bindImage(thumbnailView, article.imageUrl)
+        bindImage(logoView, article.logoUrl)
+
+        val chipLabel = formatInterestLabel(article.interest)
+        chipView.text = chipLabel
+        chipView.isVisible = !chipLabel.isNullOrBlank()
+        itemView.setOnClickListener { onClick(article) }
+    }
+}
+
+private class FeatureArticleViewHolder(
+    itemView: View,
+    private val onClick: (Article) -> Unit
+) : RecyclerView.ViewHolder(itemView) {
+    private val imageView: ImageView = itemView.findViewById(R.id.local_feature_image)
+    private val titleView: TextView = itemView.findViewById(R.id.local_feature_title)
+    private val metaView: TextView = itemView.findViewById(R.id.local_feature_meta)
+    private val chipView: com.google.android.material.chip.Chip =
+        itemView.findViewById(R.id.local_feature_chip)
+
+    fun bind(article: Article) {
+        titleView.text = article.title
+        val meta = listOfNotNull(article.sourceName, article.ageLabel)
+            .joinToString(" • ")
+        metaView.text = meta
+        metaView.isVisible = meta.isNotBlank()
+
+        bindImage(imageView, article.imageUrl)
+
+        val chipLabel = formatInterestLabel(article.interest)
+        chipView.text = chipLabel
+        chipView.isVisible = !chipLabel.isNullOrBlank()
+        itemView.setOnClickListener { onClick(article) }
+    }
+}
+
+private fun formatInterestLabel(interest: String): String? {
+    return interest
+        .takeIf { it.isNotBlank() }
+        ?.replaceFirstChar { char -> char.titlecase() }
+}
+
+private fun bindImage(imageView: ImageView, url: String) {
+    if (url.isBlank()) {
+        imageView.isVisible = false
+        imageView.setImageDrawable(null)
+        return
+    }
+    imageView.isVisible = true
+    imageView.load(url) {
+        listener(
+            onError = { _, _ ->
+                imageView.isVisible = false
+            }
+        )
     }
 }
 
@@ -275,14 +313,15 @@ private fun List<com.digitalturbine.promptnews.data.rss.Article>.toUiArticles(
     interestLabel: String
 ): List<Article> {
     return map { article ->
+        val inferredInterest = inferInterestFromTitle(article.title)
         Article(
             title = article.title,
             url = article.link,
             imageUrl = article.imageUrl.orEmpty(),
-            logoUrl = "",
+            logoUrl = faviconFrom(article.link).orEmpty(),
             sourceName = article.source,
             ageLabel = TimeLabelFormatter.formatTimeLabel(article.published?.toEpochMilli()),
-            interest = interestLabel,
+            interest = inferredInterest.ifBlank { interestLabel },
             isFotoscapes = false
         )
     }
