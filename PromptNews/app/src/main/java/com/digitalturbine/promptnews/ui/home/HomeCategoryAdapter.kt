@@ -92,8 +92,30 @@ class HomeCategoryAdapter(
             sourceView.text = article.sourceName.orEmpty()
             sourceView.isVisible = sourceView.text.isNotBlank()
             badgeView.text = itemView.context.getString(R.string.home_top_story_badge)
-            bindImage(imageView, article.imageUrl)
-            bindImage(logoView, article.logoUrl)
+            if (article.imageUrl.isBlank()) {
+                imageView.visibility = View.GONE
+                imageView.setImageDrawable(null)
+            } else {
+                imageView.visibility = View.VISIBLE
+                imageView.load(article.imageUrl) {
+                    crossfade(true)
+                    listener(
+                        onError = { _, _ -> imageView.visibility = View.GONE }
+                    )
+                }
+            }
+            if (article.logoUrl.isBlank()) {
+                logoView.visibility = View.GONE
+                logoView.setImageDrawable(null)
+            } else {
+                logoView.visibility = View.VISIBLE
+                logoView.load(article.logoUrl) {
+                    crossfade(true)
+                    listener(
+                        onError = { _, _ -> logoView.visibility = View.GONE }
+                    )
+                }
+            }
             itemView.setOnClickListener { onClick(article) }
         }
     }
@@ -124,8 +146,30 @@ class HomeCategoryAdapter(
             sourceNameView.isVisible = sourceNameView.text.isNotBlank()
             metaView.text = article.ageLabel.orEmpty()
             metaView.isVisible = metaView.text.isNotBlank()
-            bindImage(thumbnailView, article.imageUrl)
-            bindImage(logoView, article.logoUrl)
+            if (article.imageUrl.isBlank()) {
+                thumbnailView.visibility = View.GONE
+                thumbnailView.setImageDrawable(null)
+            } else {
+                thumbnailView.visibility = View.VISIBLE
+                thumbnailView.load(article.imageUrl) {
+                    crossfade(true)
+                    listener(
+                        onError = { _, _ -> thumbnailView.visibility = View.GONE }
+                    )
+                }
+            }
+            if (article.logoUrl.isBlank()) {
+                logoView.visibility = View.GONE
+                logoView.setImageDrawable(null)
+            } else {
+                logoView.visibility = View.VISIBLE
+                logoView.load(article.logoUrl) {
+                    crossfade(true)
+                    listener(
+                        onError = { _, _ -> logoView.visibility = View.GONE }
+                    )
+                }
+            }
             sourceRowView.isVisible = sourceNameView.isVisible || logoView.isVisible
             chipView.isVisible = false
             itemView.setOnClickListener { onClick(article) }
@@ -149,8 +193,30 @@ class HomeCategoryAdapter(
             metaView.isVisible = metaView.text.isNotBlank()
             sourceView.text = article.sourceName.orEmpty()
             sourceView.isVisible = sourceView.text.isNotBlank()
-            bindImage(imageView, article.imageUrl)
-            bindImage(logoView, article.logoUrl)
+            if (article.imageUrl.isBlank()) {
+                imageView.visibility = View.GONE
+                imageView.setImageDrawable(null)
+            } else {
+                imageView.visibility = View.VISIBLE
+                imageView.load(article.imageUrl) {
+                    crossfade(true)
+                    listener(
+                        onError = { _, _ -> imageView.visibility = View.GONE }
+                    )
+                }
+            }
+            if (article.logoUrl.isBlank()) {
+                logoView.visibility = View.GONE
+                logoView.setImageDrawable(null)
+            } else {
+                logoView.visibility = View.VISIBLE
+                logoView.load(article.logoUrl) {
+                    crossfade(true)
+                    listener(
+                        onError = { _, _ -> logoView.visibility = View.GONE }
+                    )
+                }
+            }
             ctaButton.isVisible = article.url.isNotBlank()
             ctaButton.setOnClickListener { onClick(article) }
             itemView.setOnClickListener { onClick(article) }
@@ -197,20 +263,6 @@ class HomeCategoryAdapter(
         fun bind(item: HomeFeedItem.CtaButton) {
             button.text = item.label
             button.setOnClickListener { onClick() }
-        }
-    }
-
-    private fun bindImage(imageView: ImageView, url: String) {
-        if (url.isBlank()) {
-            imageView.isVisible = false
-            imageView.setImageDrawable(null)
-            return
-        }
-        imageView.isVisible = true
-        imageView.load(url) {
-            listener(
-                onError = { _, _ -> imageView.isVisible = false }
-            )
         }
     }
 
