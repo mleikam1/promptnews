@@ -107,11 +107,10 @@ private class InterestAdapter(
             pill.text = interest.displayName
             pill.isSelected = isSelected
             pill.setOnClickListener {
-                val position = bindingAdapterPosition
-                if (position != RecyclerView.NO_POSITION) {
-                    onSelectionChanged(interest.id, !isSelected)
-                    notifyItemChanged(position)
-                }
+                val position = adapterPosition
+                if (position == RecyclerView.NO_POSITION) return@setOnClickListener
+                onSelectionChanged(interest.id, !isSelected)
+                notifyItemChanged(position)
             }
         }
     }
