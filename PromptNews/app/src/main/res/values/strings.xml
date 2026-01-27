@@ -7,4 +7,13 @@
     <string name="home_local_empty">No local stories available right now.</string>
     <string name="home_local_requires_location">Enable location access to see local headlines.</string>
     <string name="home_error">Unable to load headlines.</string>
+    <string name="home_trending_now">Trending Now</string>
+    <string name="home_trending_pulse">Trending Pulse</string>
+    <string name="home_local_near_city">Top news near %1$s</string>
+    <string name="home_local_near_you">Top news near you</string>
+    <string name="home_local_more">More local news</string>
+    <string name="home_read_more">Read More</string>
+    <string name="home_top_story_badge">Top Story</string>
+    <string name="home_hero_meta">%1$s \u2022 %2$s</string>
+    <string name="home_latest_stories">Latest Stories</string>
 </resources>
