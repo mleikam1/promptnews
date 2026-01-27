@@ -6,7 +6,6 @@
     android:layout_height="wrap_content"
     android:layout_marginEnd="8dp"
     android:textColor="@color/home_chip_text"
-    android:textAllCaps="false"
     app:checkable="true"
     app:chipBackgroundColor="@color/home_chip_bg"
     app:chipStrokeColor="@color/black"
