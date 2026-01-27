@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="home_read_minutes">
+        <item quantity="one">%d min read</item>
+        <item quantity="other">%d mins read</item>
+    </plurals>
+</resources>
