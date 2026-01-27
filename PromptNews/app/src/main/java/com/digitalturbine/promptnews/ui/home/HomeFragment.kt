@@ -18,11 +18,8 @@ import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.digitalturbine.promptnews.R
 import com.digitalturbine.promptnews.data.Article
-import com.digitalturbine.promptnews.data.rss.GoogleNewsRepository
+import com.digitalturbine.promptnews.data.SearchRepository
 import com.digitalturbine.promptnews.util.HomePrefs
-import com.digitalturbine.promptnews.util.TimeLabelFormatter
-import com.digitalturbine.promptnews.util.faviconFrom
-import com.digitalturbine.promptnews.util.inferInterestFromTitle
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -31,6 +28,7 @@ import kotlinx.coroutines.withContext
 class HomeFragment : Fragment(R.layout.fragment_home) {
     private val topStoriesAdapter = HomeArticleAdapter(::openArticle)
     private val localStoriesAdapter = LocalArticleAdapter(::openArticle)
+    private val searchRepository = SearchRepository()
     private var prefsListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     private lateinit var loadingView: ProgressBar
@@ -101,11 +99,26 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         showLoading()
         viewLifecycleOwner.lifecycleScope.launch {
             val topResult = withContext(Dispatchers.IO) {
-                runCatching { GoogleNewsRepository.topStories() }
+                runCatching {
+                    searchRepository.fetchSerpNews(
+                        query = "top news",
+                        page = 0,
+                        pageSize = TOP_STORIES_COUNT,
+                        useRawImageUrls = true
+                    )
+                }
             }
             val localResult = if (locationLabel.isNotBlank()) {
                 withContext(Dispatchers.IO) {
-                    runCatching { GoogleNewsRepository.localNews(locationLabel) }
+                    runCatching {
+                        searchRepository.fetchSerpNews(
+                            query = "local news $locationLabel",
+                            page = 0,
+                            pageSize = LOCAL_STORIES_TOTAL,
+                            location = locationLabel,
+                            useRawImageUrls = true
+                        )
+                    }
                 }
             } else {
                 Result.success(emptyList())
@@ -119,10 +132,8 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             }
 
             val topStories = topResult.getOrDefault(emptyList())
-                .toUiArticles("top")
                 .take(TOP_STORIES_COUNT)
             val localStories = localResult.getOrDefault(emptyList())
-                .toUiArticles("local")
                 .take(LOCAL_STORIES_TOTAL)
 
             topStoriesAdapter.submitList(topStories)
@@ -306,23 +317,5 @@ private object ArticleDiff : DiffUtil.ItemCallback<Article>() {
 
     override fun areContentsTheSame(oldItem: Article, newItem: Article): Boolean {
         return oldItem == newItem
-    }
-}
-
-private fun List<com.digitalturbine.promptnews.data.rss.Article>.toUiArticles(
-    interestLabel: String
-): List<Article> {
-    return map { article ->
-        val inferredInterest = inferInterestFromTitle(article.title)
-        Article(
-            title = article.title,
-            url = article.link,
-            imageUrl = article.imageUrl.orEmpty(),
-            logoUrl = faviconFrom(article.link).orEmpty(),
-            sourceName = article.source,
-            ageLabel = TimeLabelFormatter.formatTimeLabel(article.published?.toEpochMilli()),
-            interest = inferredInterest.ifBlank { interestLabel },
-            isFotoscapes = false
-        )
     }
 }
