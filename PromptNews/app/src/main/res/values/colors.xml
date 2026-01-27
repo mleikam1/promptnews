@@ -10,4 +10,6 @@
     <color name="trending_up">#FF1B9E4B</color>
     <color name="trending_down">#FFD64545</color>
     <color name="trending_flat">#FF8E8E8E</color>
+    <color name="home_category_pill_selected_bg">#FF000000</color>
+    <color name="home_category_pill_unselected_bg">#FFF0ECF2</color>
 </resources>

@@ -535,14 +535,19 @@ fun SearchScreen(
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     s.extras.relatedSearches.forEach { chip ->
-                                        AssistChip(
-                                            onClick = { runChipSearch(chip) },
-                                            label = { Text(chip) },
-                                            shape = RoundedCornerShape(16.dp),
-                                            colors = AssistChipDefaults.assistChipColors(
-                                                containerColor = Color(0xFFF0ECF2)
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .background(Color(0xFFF0ECF2))
+                                                .clickable { runChipSearch(chip) }
+                                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                                        ) {
+                                            Text(
+                                                chip,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = Color.Black
                                             )
-                                        )
+                                        }
                                     }
                                 }
                                 Spacer(Modifier.height(16.dp))

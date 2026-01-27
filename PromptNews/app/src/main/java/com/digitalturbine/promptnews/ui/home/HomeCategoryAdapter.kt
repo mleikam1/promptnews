@@ -14,7 +14,6 @@ import coil.load
 import com.digitalturbine.promptnews.R
 import com.digitalturbine.promptnews.data.Article
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.chip.Chip
 
 class HomeCategoryAdapter(
     private val onArticleClick: (Article) -> Unit,
@@ -83,7 +82,7 @@ class HomeCategoryAdapter(
         private val metaView: TextView = itemView.findViewById(R.id.home_hero_meta)
         private val logoView: ImageView = itemView.findViewById(R.id.home_hero_logo)
         private val sourceView: TextView = itemView.findViewById(R.id.home_hero_source)
-        private val badgeView: Chip = itemView.findViewById(R.id.home_hero_badge)
+        private val badgeView: TextView = itemView.findViewById(R.id.home_hero_badge)
 
         fun bind(item: HomeFeedItem.Hero) {
             val article = item.article
@@ -117,7 +116,7 @@ class HomeCategoryAdapter(
         private val logoView: ImageView = itemView.findViewById(R.id.local_article_source_logo)
         private val sourceNameView: TextView = itemView.findViewById(R.id.local_article_source_name)
         private val sourceRowView: View = itemView.findViewById(R.id.local_article_source_row)
-        private val chipView: Chip = itemView.findViewById(R.id.local_article_chip)
+        private val chipView: TextView = itemView.findViewById(R.id.local_article_chip)
 
         fun bind(article: Article) {
             titleView.text = article.title

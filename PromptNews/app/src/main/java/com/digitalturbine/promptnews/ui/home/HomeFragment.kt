@@ -12,7 +12,7 @@ import com.digitalturbine.promptnews.data.UserInterestRepositoryImpl
 class HomeFragment : Fragment(R.layout.fragment_home) {
     private lateinit var chipsView: androidx.recyclerview.widget.RecyclerView
     private lateinit var pagerView: ViewPager2
-    private val chipAdapter = HomeCategoryChipAdapter { index ->
+    private val pillAdapter = HomeCategoryPillAdapter { index ->
         pagerView.currentItem = index
     }
 
@@ -25,13 +25,13 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         val categories = buildCategories(interests)
 
         chipsView.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
-        chipsView.adapter = chipAdapter
-        chipAdapter.submitList(categories)
+        chipsView.adapter = pillAdapter
+        pillAdapter.submitList(categories)
 
         pagerView.adapter = HomeCategoryPagerAdapter(this, categories)
         pagerView.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
-                chipAdapter.setSelectedIndex(position)
+                pillAdapter.setSelectedIndex(position)
                 chipsView.smoothScrollToPosition(position)
             }
         })

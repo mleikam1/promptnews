@@ -2,19 +2,20 @@ package com.digitalturbine.promptnews.ui.home
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.digitalturbine.promptnews.R
-import com.google.android.material.chip.Chip
 
-class HomeCategoryChipAdapter(
-    private val onChipSelected: (Int) -> Unit
-) : RecyclerView.Adapter<HomeCategoryChipAdapter.ChipViewHolder>() {
+class HomeCategoryPillAdapter(
+    private val onPillSelected: (Int) -> Unit
+) : RecyclerView.Adapter<HomeCategoryPillAdapter.PillViewHolder>() {
     private val items = mutableListOf<HomeCategory>()
     private var selectedIndex: Int = 0
 
     fun submitList(categories: List<HomeCategory>) {
         items.clear()
         items.addAll(categories)
+        selectedIndex = 0
         notifyDataSetChanged()
     }
 
@@ -27,26 +28,26 @@ class HomeCategoryChipAdapter(
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ChipViewHolder {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PillViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_home_category_chip, parent, false) as Chip
-        return ChipViewHolder(view)
+            .inflate(R.layout.item_home_category_pill, parent, false) as TextView
+        return PillViewHolder(view)
     }
 
-    override fun onBindViewHolder(holder: ChipViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: PillViewHolder, position: Int) {
         holder.bind(items[position], position == selectedIndex)
     }
 
     override fun getItemCount(): Int = items.size
 
-    inner class ChipViewHolder(private val chip: Chip) : RecyclerView.ViewHolder(chip) {
+    inner class PillViewHolder(private val pill: TextView) : RecyclerView.ViewHolder(pill) {
         fun bind(category: HomeCategory, selected: Boolean) {
-            chip.text = category.displayName
-            chip.isChecked = selected
-            chip.setOnClickListener {
+            pill.text = category.displayName
+            pill.isSelected = selected
+            pill.setOnClickListener {
                 val position = bindingAdapterPosition
                 if (position != RecyclerView.NO_POSITION) {
-                    onChipSelected(position)
+                    onPillSelected(position)
                 }
             }
         }
