@@ -24,11 +24,8 @@
             android:id="@+id/local_feature_badge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="top|start"
-            android:layout_margin="12dp"
             android:text="Popular"
             android:textColor="@color/home_chip_text"
-            android:visibility="gone"
             app:chipBackgroundColor="@color/home_chip_bg"
             app:chipStrokeWidth="0dp" />
 
@@ -36,8 +33,6 @@
             android:id="@+id/local_feature_chip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="top|end"
-            android:layout_margin="12dp"
             android:textColor="@color/home_chip_text"
             app:chipBackgroundColor="@color/home_chip_bg"
             app:chipStrokeWidth="0dp" />
