@@ -14,5 +14,5 @@
     app:checkedChipBackgroundColor="@color/black"
     app:checkedIconVisible="false"
     app:checkedIconTint="@color/white"
-    app:checkedTextColor="@color/white"
+    app:chipTextColor="@color/chip_text_color_selector"
     app:chipIconVisible="false" />
