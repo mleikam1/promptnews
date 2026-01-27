@@ -24,6 +24,9 @@ import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
 
 class HomeFragment : Fragment(R.layout.fragment_home) {
     private val topStoriesAdapter = HomeArticleAdapter(::openArticle)
@@ -35,6 +38,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     private lateinit var errorView: TextView
     private lateinit var contentView: View
     private lateinit var topHeaderView: TextView
+    private lateinit var topDateView: TextView
     private lateinit var localHeaderView: TextView
     private lateinit var localSubtitleView: TextView
     private lateinit var topEmptyView: TextView
@@ -48,6 +52,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         errorView = view.findViewById(R.id.home_error)
         contentView = view.findViewById(R.id.home_content)
         topHeaderView = view.findViewById(R.id.top_stories_header)
+        topDateView = view.findViewById(R.id.top_stories_date)
         localHeaderView = view.findViewById(R.id.local_stories_header)
         localSubtitleView = view.findViewById(R.id.local_stories_subtitle)
         topEmptyView = view.findViewById(R.id.top_stories_empty)
@@ -57,8 +62,14 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
 
         configureList(topListView, topStoriesAdapter, true)
         configureList(localListView, localStoriesAdapter, false)
+        updateTopStoriesDate()
 
         loadFeed(HomePrefs.getLocation(requireContext()))
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateTopStoriesDate()
     }
 
     override fun onStart() {
@@ -172,6 +183,10 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         errorView.isVisible = false
     }
 
+    private fun updateTopStoriesDate() {
+        topDateView.text = formatDateWithOrdinal(LocalDate.now(), Locale.getDefault())
+    }
+
     private fun openArticle(article: Article) {
         if (article.url.isBlank()) return
         val ctx = requireContext()
@@ -242,18 +257,24 @@ private class SmallArticleViewHolder(
     private val metaView: TextView = itemView.findViewById(R.id.local_article_meta)
     private val thumbnailView: ImageView = itemView.findViewById(R.id.local_article_thumbnail)
     private val logoView: ImageView = itemView.findViewById(R.id.local_article_source_logo)
+    private val sourceNameView: TextView = itemView.findViewById(R.id.local_article_source_name)
+    private val sourceRowView: View = itemView.findViewById(R.id.local_article_source_row)
     private val chipView: com.google.android.material.chip.Chip =
         itemView.findViewById(R.id.local_article_chip)
 
     fun bind(article: Article) {
         titleView.text = article.title
-        val meta = listOfNotNull(article.sourceName, article.ageLabel)
-            .joinToString(" • ")
+        val sourceName = article.sourceName.orEmpty()
+        sourceNameView.text = sourceName
+        sourceNameView.isVisible = sourceName.isNotBlank()
+
+        val meta = article.ageLabel.orEmpty()
         metaView.text = meta
         metaView.isVisible = meta.isNotBlank()
 
         bindImage(thumbnailView, article.imageUrl)
         bindImage(logoView, article.logoUrl)
+        sourceRowView.isVisible = sourceNameView.isVisible || logoView.isVisible
 
         val chipLabel = formatInterestLabel(article.interest)
         chipView.text = chipLabel
@@ -269,12 +290,16 @@ private class FeatureArticleViewHolder(
     private val imageView: ImageView = itemView.findViewById(R.id.local_feature_image)
     private val titleView: TextView = itemView.findViewById(R.id.local_feature_title)
     private val metaView: TextView = itemView.findViewById(R.id.local_feature_meta)
+    private val badgeView: com.google.android.material.chip.Chip =
+        itemView.findViewById(R.id.local_feature_badge)
     private val chipView: com.google.android.material.chip.Chip =
         itemView.findViewById(R.id.local_feature_chip)
 
     fun bind(article: Article) {
         titleView.text = article.title
-        val meta = listOfNotNull(article.sourceName, article.ageLabel)
+        val isPopular = article.ageLabel?.contains("popular", ignoreCase = true) == true
+        badgeView.isVisible = isPopular
+        val meta = listOfNotNull(article.sourceName, article.ageLabel?.takeIf { !isPopular })
             .joinToString(" • ")
         metaView.text = meta
         metaView.isVisible = meta.isNotBlank()
@@ -292,6 +317,22 @@ private fun formatInterestLabel(interest: String): String? {
     return interest
         .takeIf { it.isNotBlank() }
         ?.replaceFirstChar { char -> char.titlecase() }
+}
+
+private fun formatDateWithOrdinal(date: LocalDate, locale: Locale): String {
+    val monthName = date.month.getDisplayName(TextStyle.FULL, locale)
+    val day = date.dayOfMonth
+    val suffix = if (day % 100 in 11..13) {
+        "th"
+    } else {
+        when (day % 10) {
+            1 -> "st"
+            2 -> "nd"
+            3 -> "rd"
+            else -> "th"
+        }
+    }
+    return "$monthName $day$suffix"
 }
 
 private fun bindImage(imageView: ImageView, url: String) {
