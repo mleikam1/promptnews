@@ -5,9 +5,9 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="16dp"
-    app:cardCornerRadius="16dp"
+    app:cardCornerRadius="20dp"
     app:cardElevation="4dp"
-    app:cardUseCompatPadding="true">
+    app:cardUseCompatPadding="false">
 
     <FrameLayout
         android:layout_width="match_parent"
@@ -16,15 +16,37 @@
         <ImageView
             android:id="@+id/local_feature_image"
             android:layout_width="match_parent"
-            android:layout_height="200dp"
+            android:layout_height="220dp"
             android:contentDescription="@null"
             android:scaleType="centerCrop" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/local_feature_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:layout_margin="12dp"
+            android:text="Popular"
+            android:textColor="@android:color/black"
+            android:visibility="gone"
+            app:chipBackgroundColor="@android:color/white"
+            app:chipStrokeWidth="0dp" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/local_feature_chip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:layout_margin="12dp"
+            android:textColor="@android:color/black"
+            app:chipBackgroundColor="@android:color/white"
+            app:chipStrokeWidth="0dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
-            android:background="#80000000"
+            android:background="#8A000000"
             android:orientation="vertical"
             android:padding="16dp">
 
@@ -44,15 +66,6 @@
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="@android:color/white"
                 android:visibility="gone" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/local_feature_chip"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:textColor="@android:color/black"
-                app:chipBackgroundColor="@android:color/white"
-                app:chipStrokeWidth="0dp" />
         </LinearLayout>
     </FrameLayout>
 </com.google.android.material.card.MaterialCardView>
