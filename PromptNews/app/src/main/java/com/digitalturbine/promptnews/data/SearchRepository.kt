@@ -110,22 +110,31 @@ class SearchRepository {
         }
 
     // SerpAPI helpers
-    private fun serpUri(params: Map<String, String>): String {
+    private fun serpUri(params: Map<String, String>, location: String? = null): String {
         val key = Config.serpApiKey
         return Uri.parse("https://serpapi.com/search.json").buildUpon().apply {
             appendQueryParameter("api_key", key)
             appendQueryParameter("hl", "en")
             appendQueryParameter("gl", "us")
+            if (!location.isNullOrBlank()) {
+                appendQueryParameter("location", location)
+            }
             params.forEach { (k, v) -> appendQueryParameter(k, v) }
         }.build().toString()
     }
 
     // News via SerpAPI (Google → Bing → Google tbm=nws)
-    suspend fun fetchSerpNews(query: String, page: Int, pageSize: Int = 20): List<Article> =
+    suspend fun fetchSerpNews(
+        query: String,
+        page: Int,
+        pageSize: Int = 20,
+        location: String? = null,
+        useRawImageUrls: Boolean = false
+    ): List<Article> =
         withContext(Dispatchers.IO) {
             if (Config.serpApiKey.isBlank()) return@withContext emptyList<Article>()
 
-            fetchSerpNewsDtos(query, page, pageSize).mapNotNull { dto ->
+            fetchSerpNewsDtos(query, page, pageSize, location, useRawImageUrls).mapNotNull { dto ->
                 val unifiedStory = serpApiMapper.toUnifiedStory(dto)
                 unifiedStory.toArticle(
                     ageLabel = dto.ageLabel,
@@ -134,11 +143,17 @@ class SearchRepository {
             }
         }
 
-    suspend fun fetchSerpNewsByOffset(query: String, limit: Int, offset: Int): List<Article> =
+    suspend fun fetchSerpNewsByOffset(
+        query: String,
+        limit: Int,
+        offset: Int,
+        location: String? = null,
+        useRawImageUrls: Boolean = false
+    ): List<Article> =
         withContext(Dispatchers.IO) {
             if (Config.serpApiKey.isBlank()) return@withContext emptyList<Article>()
 
-            fetchSerpNewsDtosByOffset(query, limit, offset).mapNotNull { dto ->
+            fetchSerpNewsDtosByOffset(query, limit, offset, location, useRawImageUrls).mapNotNull { dto ->
                 val unifiedStory = serpApiMapper.toUnifiedStory(dto)
                 unifiedStory.toArticle(
                     ageLabel = dto.ageLabel,
@@ -147,18 +162,37 @@ class SearchRepository {
             }
         }
 
-    suspend fun fetchSerpNewsStories(query: String, page: Int, pageSize: Int = 20): List<UnifiedStory> =
+    suspend fun fetchSerpNewsStories(
+        query: String,
+        page: Int,
+        pageSize: Int = 20,
+        location: String? = null,
+        useRawImageUrls: Boolean = false
+    ): List<UnifiedStory> =
         withContext(Dispatchers.IO) {
             if (Config.serpApiKey.isBlank()) return@withContext emptyList<UnifiedStory>()
-            fetchSerpNewsDtos(query, page, pageSize).map { dto -> serpApiMapper.toUnifiedStory(dto) }
+            fetchSerpNewsDtos(query, page, pageSize, location, useRawImageUrls)
+                .map { dto -> serpApiMapper.toUnifiedStory(dto) }
         }
 
-    private fun fetchSerpNewsDtos(query: String, page: Int, pageSize: Int): List<SerpApiStoryDto> {
+    private fun fetchSerpNewsDtos(
+        query: String,
+        page: Int,
+        pageSize: Int,
+        location: String?,
+        useRawImageUrls: Boolean
+    ): List<SerpApiStoryDto> {
         val start = page * pageSize
-        return fetchSerpNewsDtosByOffset(query, pageSize, start)
+        return fetchSerpNewsDtosByOffset(query, pageSize, start, location, useRawImageUrls)
     }
 
-    private fun fetchSerpNewsDtosByOffset(query: String, limit: Int, offset: Int): List<SerpApiStoryDto> {
+    private fun fetchSerpNewsDtosByOffset(
+        query: String,
+        limit: Int,
+        offset: Int,
+        location: String?,
+        useRawImageUrls: Boolean
+    ): List<SerpApiStoryDto> {
         fun safeRequest(url: String): String? {
             return runCatching {
                 Http.client.newCall(Http.req(url)).execute().use { r ->
@@ -172,6 +206,21 @@ class SearchRepository {
                 Log.w(TAG, "SerpAPI request error for $url", err)
                 null
             }
+        }
+
+        fun extractPublishedAt(json: JSONObject): String? {
+            val published = json.opt("published_time")
+            val publishedStr = when (published) {
+                is String -> published
+                is JSONObject -> published.optString("date")
+                    .ifBlank { published.optString("iso") }
+                    .ifBlank { published.optString("datetime") }
+                else -> ""
+            }
+            return publishedStr
+                .ifBlank { json.optString("date") }
+                .ifBlank { json.optString("date_published") }
+                .ifBlank { null }
         }
 
         fun parse(jsonStr: String): List<SerpApiStoryDto> {
@@ -197,19 +246,29 @@ class SearchRepository {
                 ).orEmpty()
                 if (title.isBlank() || link.isBlank() || img.isBlank()) return@mapNotNull null
 
-                val srcName = when (val s = j.opt("source")) {
-                    is JSONObject -> s.optString("name")
-                    is String -> s
+                val srcObject = j.opt("source")
+                val srcName = when (srcObject) {
+                    is JSONObject -> srcObject.optString("name")
+                    is String -> srcObject
                     else -> null
                 } ?: j.optString("news_site").ifBlank { null }
+                val srcLogo = firstHttp(
+                    JSONObject()
+                        .put("icon", (srcObject as? JSONObject)?.opt("icon"))
+                        .put("logo", (srcObject as? JSONObject)?.opt("logo"))
+                        .put("thumbnail", (srcObject as? JSONObject)?.opt("thumbnail"))
+                        .put("source_logo", j.opt("source_logo"))
+                ).orEmpty()
 
-                val age = j.optString("date").ifBlank { j.optString("date_published") }
+                val age = extractPublishedAt(j)
+                val imageUrl = if (useRawImageUrls) img else tryUpscaleCdn(img)
+                val logoUrl = srcLogo.ifBlank { favicon(link) }
 
                 SerpApiStoryDto(
                     title = title,
                     url = link,
-                    imageUrl = tryUpscaleCdn(img),
-                    logoUrl = favicon(link),
+                    imageUrl = imageUrl,
+                    logoUrl = logoUrl,
                     sourceName = srcName,
                     ageLabel = TimeLabelFormatter.formatTimeLabel(age)
                 )
@@ -223,17 +282,17 @@ class SearchRepository {
 
         safeRequest(serpUri(mapOf(
             "engine" to "google_news", "q" to query, "num" to num, "start" to start
-        )))?.let { out = parse(it) }
+        ), location))?.let { out = parse(it) }
         if (out.isNotEmpty()) return out
 
         safeRequest(serpUri(mapOf(
             "engine" to "bing_news", "q" to query, "count" to num, "first" to start, "cc" to "US"
-        )))?.let { out = parse(it) }
+        ), location))?.let { out = parse(it) }
         if (out.isNotEmpty()) return out
 
         safeRequest(serpUri(mapOf(
             "engine" to "google", "tbm" to "nws", "q" to query, "num" to num, "start" to start
-        )))?.let { out = parse(it) }
+        ), location))?.let { out = parse(it) }
 
         return out
     }
