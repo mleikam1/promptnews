@@ -45,10 +45,9 @@ class HomeCategoryPillAdapter(
             pill.text = category.displayName
             pill.isSelected = selected
             pill.setOnClickListener {
-                val position = bindingAdapterPosition
-                if (position != RecyclerView.NO_POSITION) {
-                    onPillSelected(position)
-                }
+                val position = adapterPosition
+                if (position == RecyclerView.NO_POSITION) return@setOnClickListener
+                onPillSelected(position)
             }
         }
     }
