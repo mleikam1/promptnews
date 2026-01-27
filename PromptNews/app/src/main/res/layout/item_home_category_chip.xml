@@ -12,8 +12,7 @@
     app:chipStrokeWidth="1dp"
     app:chipCornerRadius="16dp"
     app:checkedChipBackgroundColor="@color/black"
-    app:checkedChipIconVisible="false"
+    app:checkedIconVisible="false"
     app:checkedIconTint="@color/white"
-    app:checkedIconTintMode="src_in"
     app:checkedTextColor="@color/white"
     app:chipIconVisible="false" />
