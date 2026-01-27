@@ -3,7 +3,6 @@ package com.digitalturbine.promptnews.ui.onboarding
 import android.content.Intent
 import android.os.Bundle
 import android.view.ViewGroup
-import android.widget.CompoundButton
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.core.view.ViewCompat
@@ -16,7 +15,6 @@ import com.digitalturbine.promptnews.data.InterestCatalog
 import com.digitalturbine.promptnews.data.UserInterestRepositoryImpl
 import com.digitalturbine.promptnews.R
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.chip.Chip
 
 class OnboardingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -85,19 +83,12 @@ private class InterestAdapter(
 ) : RecyclerView.Adapter<InterestAdapter.InterestViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): InterestViewHolder {
-        val chip = Chip(parent.context).apply {
-            isCheckable = true
-            isClickable = true
-            isFocusable = true
-            layoutParams = ViewGroup.MarginLayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                val margin = (8 * resources.displayMetrics.density).toInt()
-                setMargins(margin, margin, margin, margin)
-            }
-        }
-        return InterestViewHolder(chip)
+        val view = layoutInflater(parent).inflate(
+            R.layout.item_interest_pill,
+            parent,
+            false
+        ) as TextView
+        return InterestViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: InterestViewHolder, position: Int) {
@@ -107,19 +98,25 @@ private class InterestAdapter(
 
     override fun getItemCount(): Int = items.size
 
-    class InterestViewHolder(private val chip: Chip) : RecyclerView.ViewHolder(chip) {
+    inner class InterestViewHolder(private val pill: TextView) : RecyclerView.ViewHolder(pill) {
         fun bind(
             interest: Interest,
             isSelected: Boolean,
             onSelectionChanged: (String, Boolean) -> Unit
         ) {
-            chip.text = interest.displayName
-            chip.isChecked = isSelected
-            chip.setOnCheckedChangeListener(null)
-            chip.isChecked = isSelected
-            chip.setOnCheckedChangeListener { _: CompoundButton, checked: Boolean ->
-                onSelectionChanged(interest.id, checked)
+            pill.text = interest.displayName
+            pill.isSelected = isSelected
+            pill.setOnClickListener {
+                val position = bindingAdapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    onSelectionChanged(interest.id, !isSelected)
+                    notifyItemChanged(position)
+                }
             }
         }
+    }
+
+    private fun layoutInflater(parent: ViewGroup): android.view.LayoutInflater {
+        return android.view.LayoutInflater.from(parent.context)
     }
 }

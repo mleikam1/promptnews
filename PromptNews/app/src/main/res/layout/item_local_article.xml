@@ -78,11 +78,16 @@
                 android:visibility="gone" />
         </LinearLayout>
 
-        <com.google.android.material.chip.Chip
+        <TextView
             android:id="@+id/local_article_chip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/home_chip_text"
-            app:chipBackgroundColor="@color/home_chip_bg" />
+            android:background="@drawable/home_badge_bg"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            android:textColor="@color/black"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>
