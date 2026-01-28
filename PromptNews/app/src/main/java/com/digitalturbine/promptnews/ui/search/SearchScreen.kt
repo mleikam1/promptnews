@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -44,7 +45,6 @@ import com.digitalturbine.promptnews.ui.components.HeroCard
 import com.digitalturbine.promptnews.ui.components.RowCard
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowMainAxisAlignment
 import androidx.compose.foundation.ExperimentalFoundationApi
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -86,8 +86,6 @@ fun SearchScreen(
 
     var text by remember { mutableStateOf("") }
     var lastQuery by remember { mutableStateOf("") }
-    val trendingTerms = remember { DEFAULT_TRENDING_PROMPTS }
-
     fun openArticle(url: String) {
         ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", url))
     }
@@ -175,14 +173,15 @@ fun SearchScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             FlowRow(
-                                mainAxisAlignment = FlowMainAxisAlignment.Center,
-                                crossAxisSpacing = 12.dp,
-                                mainAxisSpacing = 12.dp
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                maxItemsInEachRow = 3
                             ) {
-                                trendingTerms.forEach { term ->
+                                DEFAULT_TRENDING_PROMPTS.forEach { prompt ->
                                     TrendingPill(
-                                        text = term,
-                                        onClick = { runChipSearch(term) }
+                                        text = prompt,
+                                        onClick = { runChipSearch(prompt) }
                                     )
                                 }
                             }
