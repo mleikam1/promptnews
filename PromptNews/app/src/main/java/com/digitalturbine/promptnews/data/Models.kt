@@ -8,8 +8,17 @@ data class Article(
     val sourceName: String? = null,
     val ageLabel: String? = null,
     val interest: String = "news",
-    val isFotoscapes: Boolean = false
+    val isFotoscapes: Boolean = false,
+    val fotoscapesUid: String = "",
+    val fotoscapesLbtype: String = ""
 )
+
+fun Article.isFotoscapesStory(): Boolean {
+    return isFotoscapes ||
+        url.contains("fotoscapes.com/lookbook", ignoreCase = true) ||
+        fotoscapesUid.isNotBlank() ||
+        fotoscapesLbtype.isNotBlank()
+}
 
 data class Clip(
     val title: String,

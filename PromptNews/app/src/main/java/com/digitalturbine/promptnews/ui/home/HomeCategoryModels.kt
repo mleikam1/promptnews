@@ -17,7 +17,7 @@ data class HomeCategory(
     companion object {
         fun home(): HomeCategory = HomeCategory(
             id = "home",
-            displayName = "Home",
+            displayName = "Local",
             type = HomeCategoryType.HOME,
             endpoint = ""
         )

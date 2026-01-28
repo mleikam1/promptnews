@@ -103,7 +103,9 @@ class SearchRepository {
                         sourceName = j.optString("owner").ifBlank { null },
                         ageLabel = age,
                         interest = inferInterest(title),
-                        isFotoscapes = true
+                        isFotoscapes = true,
+                        fotoscapesUid = j.optString("uid"),
+                        fotoscapesLbtype = j.optString("lbtype")
                     )
                 }.take(limit).toList()
             }
