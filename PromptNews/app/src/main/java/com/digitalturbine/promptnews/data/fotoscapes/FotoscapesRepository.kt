@@ -52,7 +52,9 @@ class FotoscapesRepository {
                     sourceName = j.optString("owner").ifBlank { null },
                     ageLabel = age,
                     interest = interest.displayName,
-                    isFotoscapes = true
+                    isFotoscapes = true,
+                    fotoscapesUid = j.optString("uid"),
+                    fotoscapesLbtype = j.optString("lbtype")
                 )
             }
         }

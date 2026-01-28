@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.digitalturbine.promptnews.R
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.HomeCategoryRepository
+import com.digitalturbine.promptnews.data.isFotoscapesStory
 import com.digitalturbine.promptnews.util.HomePrefs
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import kotlinx.coroutines.launch
@@ -154,10 +155,18 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
 
     private fun openArticle(article: Article) {
         if (article.url.isBlank()) return
+        if (article.isFotoscapesStory()) {
+            openWebView(article.url)
+            return
+        }
+        openWebView(article.url)
+    }
+
+    private fun openWebView(url: String) {
         val ctx = requireContext()
         ctx.startActivity(
             Intent(ctx, ArticleWebViewActivity::class.java)
-                .putExtra("url", article.url)
+                .putExtra("url", url)
         )
     }
 
