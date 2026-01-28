@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -37,7 +38,7 @@ import com.digitalturbine.promptnews.data.Clip
 import com.digitalturbine.promptnews.data.SearchUi
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
-import com.digitalturbine.promptnews.data.trending.TrendingRepository
+import com.digitalturbine.promptnews.data.trending.TrendingPromptsRepository
 import com.digitalturbine.promptnews.ui.PromptNewsTopBar
 import com.digitalturbine.promptnews.util.isNflIntent
 import com.digitalturbine.promptnews.ui.components.HeroCard
@@ -46,6 +47,9 @@ import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
 
 enum class SearchScreenState {
     Prompt,
@@ -65,7 +69,7 @@ fun SearchScreen(
     val ui by vm.ui.collectAsState()
     val ctx = LocalContext.current
     val historyRepository = remember(ctx) { HistoryRepository.getInstance(ctx) }
-    val trendingRepository = remember(ctx) { TrendingRepository.getInstance(ctx) }
+    val trendingRepository = remember(ctx) { TrendingPromptsRepository.getInstance(ctx) }
     val scope = rememberCoroutineScope()
 
     var text by remember { mutableStateOf("") }
@@ -151,17 +155,19 @@ fun SearchScreen(
                 item { Spacer(Modifier.height(16.dp)) }
                 if (trendingTerms.isNotEmpty()) {
                     item {
-                        Column {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                "Trending Now",
+                                text = "Trending Prompts for ${formatTrendingDate(LocalDate.now())}",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.ExtraBold
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
                             )
                             Spacer(Modifier.height(12.dp))
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                items(trendingTerms.take(10), key = { it }) { term ->
+                                items(trendingTerms, key = { it }) { term ->
                                     TrendingPill(
                                         text = term,
                                         onClick = { runChipSearch(term) }
@@ -401,6 +407,22 @@ private fun TrendingPill(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
+    }
+}
+
+private fun formatTrendingDate(date: LocalDate): String {
+    val month = date.month.getDisplayName(TextStyle.FULL, Locale.US)
+    val day = date.dayOfMonth
+    return "$month $day${ordinalSuffix(day)}"
+}
+
+private fun ordinalSuffix(day: Int): String {
+    if (day in 11..13) return "th"
+    return when (day % 10) {
+        1 -> "st"
+        2 -> "nd"
+        3 -> "rd"
+        else -> "th"
     }
 }
 
