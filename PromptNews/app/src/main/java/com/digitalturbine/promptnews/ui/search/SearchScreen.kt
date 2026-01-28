@@ -44,6 +44,7 @@ import com.digitalturbine.promptnews.ui.components.HeroCard
 import com.digitalturbine.promptnews.ui.components.RowCard
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowMainAxisAlignment
 import androidx.compose.foundation.ExperimentalFoundationApi
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -169,14 +170,21 @@ fun SearchScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(Modifier.height(12.dp))
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            items(trendingTerms, key = { it }) { term ->
-                                TrendingPill(
-                                    text = term,
-                                    onClick = { runChipSearch(term) }
-                                )
+                            FlowRow(
+                                mainAxisAlignment = FlowMainAxisAlignment.Center,
+                                crossAxisSpacing = 12.dp,
+                                mainAxisSpacing = 12.dp
+                            ) {
+                                trendingTerms.forEach { term ->
+                                    TrendingPill(
+                                        text = term,
+                                        onClick = { runChipSearch(term) }
+                                    )
+                                }
                             }
                         }
                         Spacer(Modifier.height(24.dp))
