@@ -12,21 +12,21 @@ data class HomeCategory(
     val id: String,
     val displayName: String,
     val type: HomeCategoryType,
-    val query: String
+    val endpoint: String
 ) {
     companion object {
         fun home(): HomeCategory = HomeCategory(
             id = "home",
             displayName = "Home",
             type = HomeCategoryType.HOME,
-            query = "top news"
+            endpoint = ""
         )
 
         fun interest(interest: Interest): HomeCategory = HomeCategory(
             id = interest.id,
             displayName = interest.displayName,
             type = HomeCategoryType.INTEREST,
-            query = "${interest.displayName} news"
+            endpoint = interest.endpoint
         )
     }
 }

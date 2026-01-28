@@ -10,15 +10,15 @@ private data class Rule(val keys: List<String>, val endpoint: String)
 
 private val interestRules = listOf(
     Rule(listOf(n("news"), n("top news"), n("general news")),
-        "https://fotoscapes.com/wp/v1/daily?ckey=fb529d256155b9c6&sched=dynamic-news"),
+        FotoscapesEndpoints.dailyEndpoint("dynamic-news")),
     Rule(listOf(n("technology"), n("tech")),
-        "https://fotoscapes.com/wp/v1/daily?ckey=fb529d256155b9c6&sched=dynamic-technology"),
+        FotoscapesEndpoints.dailyEndpoint("dynamic-technology")),
     Rule(listOf(n("sports"), n("nfl"), n("nba")),
-        "https://fotoscapes.com/wp/v1/daily?ckey=fb529d256155b9c6&sched=dynamic-sports"),
+        FotoscapesEndpoints.dailyEndpoint("dynamic-sports")),
     Rule(listOf(n("business"), n("markets"), n("finance")),
-        "https://fotoscapes.com/wp/v1/daily?ckey=fb529d256155b9c6&sched=business"),
+        FotoscapesEndpoints.dailyEndpoint("business")),
     Rule(listOf(n("world"), n("international")),
-        "https://fotoscapes.com/wp/v1/daily?ckey=fb529d256155b9c6&sched=world"),
+        FotoscapesEndpoints.dailyEndpoint("world")),
 )
 
 private val publisherMap = mapOf(
