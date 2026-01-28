@@ -1,9 +1,11 @@
 package com.digitalturbine.promptnews.ui.home
 
+import android.graphics.Rect
 import android.os.Bundle
 import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.digitalturbine.promptnews.R
 import com.digitalturbine.promptnews.data.Interest
@@ -26,6 +28,20 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
 
         chipsView.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
         chipsView.adapter = pillAdapter
+        val pillSpacing = resources.getDimensionPixelSize(R.dimen.home_category_pill_spacing)
+        chipsView.addItemDecoration(object : RecyclerView.ItemDecoration() {
+            override fun getItemOffsets(
+                outRect: Rect,
+                view: View,
+                parent: RecyclerView,
+                state: RecyclerView.State
+            ) {
+                val position = parent.getChildAdapterPosition(view)
+                if (position == RecyclerView.NO_POSITION) return
+                val itemCount = parent.adapter?.itemCount ?: 0
+                outRect.right = if (position == itemCount - 1) 0 else pillSpacing
+            }
+        })
         pillAdapter.submitList(categories)
 
         pagerView.adapter = HomeCategoryPagerAdapter(this, categories)

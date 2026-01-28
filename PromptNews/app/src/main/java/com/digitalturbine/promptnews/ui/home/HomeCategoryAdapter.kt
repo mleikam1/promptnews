@@ -138,7 +138,6 @@ class HomeCategoryAdapter(
         private val logoView: ImageView = itemView.findViewById(R.id.local_article_source_logo)
         private val sourceNameView: TextView = itemView.findViewById(R.id.local_article_source_name)
         private val sourceRowView: View = itemView.findViewById(R.id.local_article_source_row)
-        private val chipView: TextView = itemView.findViewById(R.id.local_article_chip)
 
         fun bind(article: Article) {
             titleView.text = article.title
@@ -171,7 +170,6 @@ class HomeCategoryAdapter(
                 }
             }
             sourceRowView.isVisible = sourceNameView.isVisible || logoView.isVisible
-            chipView.isVisible = false
             itemView.setOnClickListener { onClick(article) }
         }
     }
