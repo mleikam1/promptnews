@@ -38,7 +38,6 @@ import com.digitalturbine.promptnews.data.Clip
 import com.digitalturbine.promptnews.data.SearchUi
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
-import com.digitalturbine.promptnews.data.trending.TrendingPromptsRepository
 import com.digitalturbine.promptnews.ui.PromptNewsTopBar
 import com.digitalturbine.promptnews.util.isNflIntent
 import com.digitalturbine.promptnews.ui.components.HeroCard
@@ -50,6 +49,19 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
+
+private val DEFAULT_TRENDING_PROMPTS = listOf(
+    "Breaking news today",
+    "Weather this week",
+    "NFL scores today",
+    "Taylor Swift news",
+    "Stock market today",
+    "Best movies streaming now",
+    "AI news today",
+    "Celebrity news",
+    "Election updates",
+    "Top tech news"
+)
 
 enum class SearchScreenState {
     Prompt,
@@ -69,12 +81,11 @@ fun SearchScreen(
     val ui by vm.ui.collectAsState()
     val ctx = LocalContext.current
     val historyRepository = remember(ctx) { HistoryRepository.getInstance(ctx) }
-    val trendingRepository = remember(ctx) { TrendingPromptsRepository.getInstance(ctx) }
     val scope = rememberCoroutineScope()
 
     var text by remember { mutableStateOf("") }
     var lastQuery by remember { mutableStateOf("") }
-    var trendingTerms by remember { mutableStateOf<List<String>>(emptyList()) }
+    val trendingTerms = remember { DEFAULT_TRENDING_PROMPTS }
 
     fun openArticle(url: String) {
         ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", url))
@@ -122,11 +133,6 @@ fun SearchScreen(
     BackHandler(enabled = screenState == SearchScreenState.Results) {
         onBack()
     }
-    LaunchedEffect(screenState) {
-        if (screenState == SearchScreenState.Prompt) {
-            trendingTerms = trendingRepository.getTrendingTerms()
-        }
-    }
 
     val searchBarBottomPadding = 25.dp
     val searchBarContentPadding = 96.dp
@@ -153,29 +159,27 @@ fun SearchScreen(
                 contentPadding = PaddingValues(bottom = contentBottomPadding)
             ) {
                 item { Spacer(Modifier.height(16.dp)) }
-                if (trendingTerms.isNotEmpty()) {
-                    item {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "Trending Prompts for ${formatTrendingDate(LocalDate.now())}",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(Modifier.height(12.dp))
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                items(trendingTerms, key = { it }) { term ->
-                                    TrendingPill(
-                                        text = term,
-                                        onClick = { runChipSearch(term) }
-                                    )
-                                }
+                item {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Trending Prompts for ${formatTrendingDate(LocalDate.now())}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(trendingTerms, key = { it }) { term ->
+                                TrendingPill(
+                                    text = term,
+                                    onClick = { runChipSearch(term) }
+                                )
                             }
-                            Spacer(Modifier.height(24.dp))
                         }
+                        Spacer(Modifier.height(24.dp))
                     }
                 }
             }
