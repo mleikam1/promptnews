@@ -95,8 +95,14 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
                 locationLabel = locationLabel
             )
 
-            if (items.isEmpty()) {
-                showError(getString(R.string.home_error))
+            val isEmpty = when (category.type) {
+                HomeCategoryType.HOME -> content.local.isEmpty()
+                HomeCategoryType.INTEREST -> content.feed.isEmpty()
+            }
+
+            if (isEmpty) {
+                feedAdapter.submitList(emptyList())
+                showEmptyState(emptyMessage(locationLabel))
             } else {
                 feedAdapter.submitList(items)
                 showContent()
@@ -140,7 +146,7 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
         feedView.isVisible = false
     }
 
-    private fun showError(message: String) {
+    private fun showEmptyState(message: String) {
         errorView.text = message
         errorView.isVisible = true
         loadingView.isVisible = false
@@ -151,6 +157,18 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
         feedView.isVisible = true
         loadingView.isVisible = false
         errorView.isVisible = false
+    }
+
+    private fun emptyMessage(locationLabel: String): String {
+        return if (category.type == HomeCategoryType.HOME) {
+            if (locationLabel.isBlank()) {
+                getString(R.string.home_local_requires_location)
+            } else {
+                getString(R.string.home_local_empty)
+            }
+        } else {
+            getString(R.string.home_interest_empty)
+        }
     }
 
     private fun openArticle(article: Article) {

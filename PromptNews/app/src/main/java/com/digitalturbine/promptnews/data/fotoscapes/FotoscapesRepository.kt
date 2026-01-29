@@ -1,7 +1,9 @@
 package com.digitalturbine.promptnews.data.fotoscapes
 
 import android.net.Uri
+import android.util.Log
 import com.digitalturbine.promptnews.data.Article
+import com.digitalturbine.promptnews.data.FotoscapesEndpoints
 import com.digitalturbine.promptnews.data.Interest
 import com.digitalturbine.promptnews.data.net.Http
 import com.digitalturbine.promptnews.util.TimeLabelFormatter
@@ -23,12 +25,42 @@ class FotoscapesRepository {
         }
 
     private suspend fun fetchInterest(interest: Interest): List<Article> = withContext(Dispatchers.IO) {
-        Http.client.newCall(Http.req(interest.endpoint)).execute().use { resp ->
+        fetchContent(
+            category = mapInterestToCategory(interest.id),
+            interest = interest.id,
+            limit = DEFAULT_LIMIT,
+            schedule = DEFAULT_SCHEDULE,
+            geo = null
+        )
+    }
+
+    suspend fun fetchContent(
+        category: String,
+        interest: String?,
+        limit: Int,
+        schedule: String,
+        geo: String?
+    ): List<Article> = withContext(Dispatchers.IO) {
+        val url = FotoscapesEndpoints.contentEndpoint(
+            category = category,
+            interest = interest,
+            limit = limit,
+            schedule = schedule,
+            geo = geo
+        )
+        Log.d(
+            TAG,
+            "Request params: category=$category interest=$interest limit=$limit schedule=$schedule geo=$geo url=$url"
+        )
+        Http.client.newCall(Http.req(url)).execute().use { resp ->
             if (!resp.isSuccessful) return@withContext emptyList()
             val body = resp.body?.string().orEmpty()
+            Log.d(TAG, "Response body: $body")
             if (body.isBlank()) return@withContext emptyList()
             val root = JSONObject(body)
+            val status = root.optString("status")
             val items = root.optJSONArray("items") ?: JSONArray()
+            Log.d(TAG, "Response status: $status count=${items.length()}")
 
             (0 until items.length()).mapNotNull { i ->
                 val j = items.optJSONObject(i) ?: return@mapNotNull null
@@ -51,13 +83,33 @@ class FotoscapesRepository {
                     logoUrl = logo,
                     sourceName = j.optString("owner").ifBlank { null },
                     ageLabel = age,
-                    interest = interest.displayName,
+                    interest = interest ?: "",
                     isFotoscapes = true,
                     fotoscapesUid = j.optString("uid"),
                     fotoscapesLbtype = j.optString("lbtype")
                 )
+            }.also { articles ->
+                Log.d(TAG, "Response count: ${articles.size}")
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "Fotoscapes"
+        private const val DEFAULT_SCHEDULE = "promptnews"
+        private const val DEFAULT_LIMIT = 10
+    }
+}
+
+private fun mapInterestToCategory(interestId: String): String {
+    return when (interestId.lowercase()) {
+        "sports" -> "sports"
+        "business", "personal-finance", "markets", "finance" -> "business"
+        "technology", "tech", "science", "games", "gear-gadgets" -> "technology"
+        "entertainment", "celebrities", "tv-film", "music", "culture" -> "entertainment"
+        "news", "general-news", "top-news", "international-news", "politics", "world" -> "news"
+        "health", "wellness", "lifestyle", "fashion", "womens-style", "mens-style", "food-drink", "home" -> "lifestyle"
+        else -> "general"
     }
 }
 
