@@ -1,5 +1,6 @@
 package com.digitalturbine.promptnews.data
 
+import android.util.Log
 import com.digitalturbine.promptnews.data.fotoscapes.FotoscapesRepository
 import com.digitalturbine.promptnews.data.serpapi.SerpApiRepository
 import com.digitalturbine.promptnews.ui.home.HomeCategory
@@ -36,11 +37,13 @@ class HomeCategoryRepository(
         } ?: return emptyList()
 
         val interestKey = interest.toFotoscapesKey()
-        return fotoscapesRepository.fetchInterestFeed(
+        val results = fotoscapesRepository.fetchInterestFeed(
             interestKey = interestKey,
             limit = FEED_COUNT,
             schedule = FOTOSCAPES_SCHEDULE
         )
+        Log.d("Fotoscapes", "Interest=$interestKey count=${results.size}")
+        return results
     }
 
     companion object {

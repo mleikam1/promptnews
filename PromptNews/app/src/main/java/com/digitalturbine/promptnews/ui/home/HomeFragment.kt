@@ -49,6 +49,8 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             override fun onPageSelected(position: Int) {
                 pillAdapter.setSelectedIndex(position)
                 chipsView.smoothScrollToPosition(position)
+                val fragment = childFragmentManager.findFragmentByTag("f$position") as? HomeCategoryPageFragment
+                fragment?.refreshOnTabSelected()
             }
         })
     }

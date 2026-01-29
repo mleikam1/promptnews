@@ -11,6 +11,7 @@ fun Interest.toFotoscapesKey(): String {
         "business" -> "business"
         "celebrities", "celebrity-homes" -> "celebrity"
         "entertainment" -> "entertainment"
+        "health" -> "health"
         "sports" -> "sports"
         "technology" -> "technology"
         else -> "general"
