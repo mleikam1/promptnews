@@ -6,6 +6,17 @@ data class Interest(
     val endpoint: String
 )
 
+fun Interest.toFotoscapesKey(): String {
+    return when (id) {
+        "business" -> "business"
+        "celebrities", "celebrity-homes" -> "celebrity"
+        "entertainment" -> "entertainment"
+        "sports" -> "sports"
+        "technology" -> "technology"
+        else -> "general"
+    }
+}
+
 data class InterestRoute(
     val id: String,
     val displayName: String,
