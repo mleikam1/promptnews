@@ -5,12 +5,15 @@ data class Article(
     val url: String,
     val imageUrl: String,
     val logoUrl: String,
+    val logoUrlDark: String = "",
     val sourceName: String? = null,
     val ageLabel: String? = null,
+    val summary: String? = null,
     val interest: String = "news",
     val isFotoscapes: Boolean = false,
     val fotoscapesUid: String = "",
-    val fotoscapesLbtype: String = ""
+    val fotoscapesLbtype: String = "",
+    val fotoscapesSourceLink: String = ""
 )
 
 fun Article.isFotoscapesStory(): Boolean {
@@ -18,6 +21,14 @@ fun Article.isFotoscapesStory(): Boolean {
         url.contains("fotoscapes.com/lookbook", ignoreCase = true) ||
         fotoscapesUid.isNotBlank() ||
         fotoscapesLbtype.isNotBlank()
+}
+
+fun Article.logoUrlForTheme(isDark: Boolean): String {
+    return if (isDark && logoUrlDark.isNotBlank()) {
+        logoUrlDark
+    } else {
+        logoUrl
+    }
 }
 
 data class Clip(

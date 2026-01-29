@@ -20,6 +20,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import com.digitalturbine.promptnews.data.Article
+import com.digitalturbine.promptnews.data.logoUrlForTheme
 
 @Composable
 fun HeroCard(article: Article, onClick: () -> Unit) {
@@ -60,9 +62,10 @@ fun HeroCard(article: Article, onClick: () -> Unit) {
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val logoUrl = article.logoUrlForTheme(isSystemInDarkTheme())
                 androidx.compose.foundation.Image(
                     painter = rememberAsyncImagePainter(
-                        model = article.logoUrl,
+                        model = logoUrl,
                         placeholder = placeholderPainter,
                         error = placeholderPainter,
                         fallback = placeholderPainter
@@ -116,9 +119,10 @@ fun RowCard(a: Article, onClick: () -> Unit) {
         val placeholderPainter = rememberVectorPainter(Icons.Default.Image)
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val logoUrl = a.logoUrlForTheme(isSystemInDarkTheme())
                 androidx.compose.foundation.Image(
                     painter = rememberAsyncImagePainter(
-                        model = a.logoUrl,
+                        model = logoUrl,
                         placeholder = placeholderPainter,
                         error = placeholderPainter,
                         fallback = placeholderPainter
@@ -147,7 +151,8 @@ fun RowCard(a: Article, onClick: () -> Unit) {
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-            a.ageLabel?.let { ageLabel ->
+            val meta = a.summary?.takeIf { it.isNotBlank() } ?: a.ageLabel
+            meta?.let { ageLabel ->
                 Spacer(Modifier.height(4.dp))
                 Text(ageLabel, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             }

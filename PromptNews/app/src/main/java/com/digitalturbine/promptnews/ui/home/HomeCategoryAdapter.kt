@@ -1,5 +1,6 @@
 package com.digitalturbine.promptnews.ui.home
 
+import android.content.res.Configuration
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.digitalturbine.promptnews.R
 import com.digitalturbine.promptnews.data.Article
+import com.digitalturbine.promptnews.data.logoUrlForTheme
 import com.google.android.material.button.MaterialButton
 
 class HomeCategoryAdapter(
@@ -104,12 +106,13 @@ class HomeCategoryAdapter(
                     )
                 }
             }
-            if (article.logoUrl.isBlank()) {
+            val logoUrl = article.logoUrlForTheme(isDarkMode(itemView))
+            if (logoUrl.isBlank()) {
                 logoView.visibility = View.GONE
                 logoView.setImageDrawable(null)
             } else {
                 logoView.visibility = View.VISIBLE
-                logoView.load(article.logoUrl) {
+                logoView.load(logoUrl) {
                     crossfade(true)
                     listener(
                         onError = { _, _ -> logoView.visibility = View.GONE }
@@ -143,7 +146,7 @@ class HomeCategoryAdapter(
             titleView.text = article.title
             sourceNameView.text = article.sourceName.orEmpty()
             sourceNameView.isVisible = sourceNameView.text.isNotBlank()
-            metaView.text = article.ageLabel.orEmpty()
+            metaView.text = article.summary?.takeIf { it.isNotBlank() } ?: article.ageLabel.orEmpty()
             metaView.isVisible = metaView.text.isNotBlank()
             if (article.imageUrl.isBlank()) {
                 thumbnailView.visibility = View.GONE
@@ -157,12 +160,13 @@ class HomeCategoryAdapter(
                     )
                 }
             }
-            if (article.logoUrl.isBlank()) {
+            val logoUrl = article.logoUrlForTheme(isDarkMode(itemView))
+            if (logoUrl.isBlank()) {
                 logoView.visibility = View.GONE
                 logoView.setImageDrawable(null)
             } else {
                 logoView.visibility = View.VISIBLE
-                logoView.load(article.logoUrl) {
+                logoView.load(logoUrl) {
                     crossfade(true)
                     listener(
                         onError = { _, _ -> logoView.visibility = View.GONE }
@@ -187,7 +191,7 @@ class HomeCategoryAdapter(
 
         fun bind(article: Article) {
             titleView.text = article.title
-            metaView.text = article.ageLabel.orEmpty()
+            metaView.text = article.summary?.takeIf { it.isNotBlank() } ?: article.ageLabel.orEmpty()
             metaView.isVisible = metaView.text.isNotBlank()
             sourceView.text = article.sourceName.orEmpty()
             sourceView.isVisible = sourceView.text.isNotBlank()
@@ -203,12 +207,13 @@ class HomeCategoryAdapter(
                     )
                 }
             }
-            if (article.logoUrl.isBlank()) {
+            val logoUrl = article.logoUrlForTheme(isDarkMode(itemView))
+            if (logoUrl.isBlank()) {
                 logoView.visibility = View.GONE
                 logoView.setImageDrawable(null)
             } else {
                 logoView.visibility = View.VISIBLE
-                logoView.load(article.logoUrl) {
+                logoView.load(logoUrl) {
                     crossfade(true)
                     listener(
                         onError = { _, _ -> logoView.visibility = View.GONE }
@@ -234,8 +239,9 @@ class HomeCategoryAdapter(
             val article = item.article
             rankView.text = item.rank.toString()
             titleView.text = article.title
-            metaView.text = listOfNotNull(article.sourceName, article.ageLabel)
-                .joinToString(" • ")
+            val meta = article.summary?.takeIf { it.isNotBlank() }
+                ?: listOfNotNull(article.sourceName, article.ageLabel).joinToString(" • ")
+            metaView.text = meta
             metaView.isVisible = metaView.text.isNotBlank()
             indicatorView.text = when (item.indicator) {
                 TrendIndicator.UP -> "▲"
@@ -271,6 +277,11 @@ class HomeCategoryAdapter(
         private const val VIEW_TYPE_FEED_CARD = 3
         private const val VIEW_TYPE_TRENDING_PULSE = 4
         private const val VIEW_TYPE_CTA = 5
+
+        private fun isDarkMode(view: View): Boolean {
+            val uiMode = view.context.resources.configuration.uiMode
+            return (uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        }
     }
 }
 

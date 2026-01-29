@@ -45,6 +45,23 @@ private fun tryUpscaleCdn(url: String): String =
     url.replace(Regex("=w\\d{2,4}(-h\\d{2,4})?(-no)?"), "=w1200-h800")
         .replace(Regex("=s\\d{2,4}"), "=s1200")
 
+private fun localizedText(obj: JSONObject, key: String): String {
+    return when (val value = obj.opt(key)) {
+        is JSONObject -> value.optString("en")
+        is String -> value
+        else -> ""
+    }
+}
+
+private fun previewLink(obj: JSONObject): String {
+    val previews = obj.optJSONArray("previews") ?: return ""
+    return when (val first = previews.opt(0)) {
+        is JSONObject -> first.optString("link")
+        is String -> first
+        else -> ""
+    }
+}
+
 private fun inferInterest(title: String): String {
     val t = title.lowercase(Locale.US)
     fun has(r: String) = Regex(r).containsMatchIn(t)
@@ -80,34 +97,43 @@ class SearchRepository {
                 if (!resp.isSuccessful) return@withContext emptyList()
                 val body = resp.body?.string().orEmpty()
                 if (body.isBlank()) return@withContext emptyList()
-                val root = JSONObject(body)
-                val items = root.optJSONArray("items") ?: JSONArray()
+                runCatching {
+                    val root = JSONObject(body)
+                    val status = root.optString("status")
+                    val items = root.optJSONArray("items") ?: JSONArray()
+                    if (status.isNotBlank() && !status.equals("ok", ignoreCase = true)) {
+                        emptyList()
+                    } else {
+                        (0 until items.length()).asSequence().mapNotNull { i ->
+                            val j = items.optJSONObject(i) ?: return@mapNotNull null
+                            val title = localizedText(j, "title")
+                            val summary = localizedText(j, "summary")
+                            val link = j.optString("link")
+                            if (link.isBlank()) return@mapNotNull null
+                            val img = previewLink(j)
+                            val age = TimeLabelFormatter.formatTimeLabel(j.optString("publishOn"))
 
-                (0 until items.length()).asSequence().mapNotNull { i ->
-                    val j = items.optJSONObject(i) ?: return@mapNotNull null
-                    val title = j.opt("title")?.let { if (it is String) it else (it as? JSONObject)?.optString("en") }.orEmpty()
-                    val link = j.optString("link").ifBlank { j.optString("sourceLink") }
-                    val img  = firstHttp(j.opt("previews")) ?: firstHttp(j.opt("images")) ?: ""
-                    if (title.isBlank() || link.isBlank() || img.isBlank()) return@mapNotNull null
-
-                    val logo = (j.optString("brandLogoDark").ifBlank { j.optString("brandLogo") }).ifBlank { favicon(link) }
-                    val age = TimeLabelFormatter.formatTimeLabel(
-                        j.optString("publishOn").ifBlank { j.optString("scheduledOn") }
-                    )
-
-                    Article(
-                        title = title,
-                        url = link,
-                        imageUrl = tryUpscaleCdn(img),
-                        logoUrl = logo,
-                        sourceName = j.optString("owner").ifBlank { null },
-                        ageLabel = age,
-                        interest = inferInterest(title),
-                        isFotoscapes = true,
-                        fotoscapesUid = j.optString("uid"),
-                        fotoscapesLbtype = j.optString("lbtype")
-                    )
-                }.take(limit).toList()
+                            Article(
+                                title = title,
+                                url = link,
+                                imageUrl = if (img.isBlank()) "" else tryUpscaleCdn(img),
+                                logoUrl = j.optString("brandLogo"),
+                                logoUrlDark = j.optString("brandLogoDark"),
+                                sourceName = j.optString("owner").ifBlank { null },
+                                ageLabel = age,
+                                summary = summary.ifBlank { null },
+                                interest = inferInterest(title),
+                                isFotoscapes = true,
+                                fotoscapesUid = j.optString("uid"),
+                                fotoscapesLbtype = j.optString("lbtype"),
+                                fotoscapesSourceLink = j.optString("sourceLink")
+                            )
+                        }.take(limit).toList()
+                    }
+                }.getOrElse { err ->
+                    Log.w(TAG, "Failed to parse FotoScapes response", err)
+                    emptyList()
+                }
             }
         }
 

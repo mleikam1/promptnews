@@ -3,6 +3,7 @@ package com.digitalturbine.promptnews.ui.home
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -186,11 +187,14 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
     }
 
     private fun openArticle(article: Article) {
-        if (article.url.isBlank()) return
         if (article.isFotoscapesStory()) {
-            openWebView(article.url)
-            return
+            Log.d(
+                "Fotoscapes",
+                "Click uid=${article.fotoscapesUid} lbtype=${article.fotoscapesLbtype} " +
+                    "link=${article.url} sourceLink=${article.fotoscapesSourceLink}"
+            )
         }
+        if (article.url.isBlank()) return
         openWebView(article.url)
     }
 
