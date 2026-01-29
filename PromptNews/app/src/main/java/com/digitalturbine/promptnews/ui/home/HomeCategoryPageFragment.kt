@@ -34,6 +34,8 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
     private lateinit var loadingView: ProgressBar
     private lateinit var errorView: TextView
 
+    private var isLoading: Boolean = false
+
     private lateinit var category: HomeCategory
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -82,6 +84,7 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
     }
 
     private fun loadFeed() {
+        isLoading = true
         showLoading()
         viewLifecycleOwner.lifecycleScope.launch {
             val locationLabel = HomePrefs.getLocation(requireContext())
@@ -100,12 +103,17 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
                 HomeCategoryType.INTEREST -> content.feed.isEmpty()
             }
 
-            if (isEmpty) {
-                feedAdapter.submitList(emptyList())
-                showEmptyState(emptyMessage(locationLabel))
-            } else {
-                feedAdapter.submitList(items)
-                showContent()
+            isLoading = false
+            when {
+                isLoading -> showLoading()
+                isEmpty -> {
+                    feedAdapter.submitList(emptyList())
+                    showEmptyState(emptyMessage(locationLabel))
+                }
+                else -> {
+                    feedAdapter.submitList(items)
+                    showContent()
+                }
             }
         }
     }

@@ -5,6 +5,7 @@ import android.util.Log
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.FotoscapesEndpoints
 import com.digitalturbine.promptnews.data.Interest
+import com.digitalturbine.promptnews.data.toFotoscapesKey
 import com.digitalturbine.promptnews.data.net.Http
 import com.digitalturbine.promptnews.util.TimeLabelFormatter
 import kotlinx.coroutines.Dispatchers
@@ -25,13 +26,27 @@ class FotoscapesRepository {
         }
 
     private suspend fun fetchInterest(interest: Interest): List<Article> = withContext(Dispatchers.IO) {
-        fetchContent(
-            category = mapInterestToCategory(interest.id),
-            interest = interest.id,
+        fetchInterestFeed(
+            interestKey = interest.toFotoscapesKey(),
             limit = DEFAULT_LIMIT,
-            schedule = DEFAULT_SCHEDULE,
+            schedule = DEFAULT_SCHEDULE
+        )
+    }
+
+    suspend fun fetchInterestFeed(
+        interestKey: String,
+        limit: Int,
+        schedule: String
+    ): List<Article> = withContext(Dispatchers.IO) {
+        val items = fetchContent(
+            category = interestKey,
+            interest = interestKey,
+            limit = limit,
+            schedule = schedule,
             geo = null
         )
+        Log.d(TAG, "Interest=$interestKey count=${items.size}")
+        items
     }
 
     suspend fun fetchContent(
@@ -98,18 +113,6 @@ class FotoscapesRepository {
         private const val TAG = "Fotoscapes"
         private const val DEFAULT_SCHEDULE = "promptnews"
         private const val DEFAULT_LIMIT = 10
-    }
-}
-
-private fun mapInterestToCategory(interestId: String): String {
-    return when (interestId.lowercase()) {
-        "sports" -> "sports"
-        "business", "personal-finance", "markets", "finance" -> "business"
-        "technology", "tech", "science", "games", "gear-gadgets" -> "technology"
-        "entertainment", "celebrities", "tv-film", "music", "culture" -> "entertainment"
-        "news", "general-news", "top-news", "international-news", "politics", "world" -> "news"
-        "health", "wellness", "lifestyle", "fashion", "womens-style", "mens-style", "food-drink", "home" -> "lifestyle"
-        else -> "general"
     }
 }
 
