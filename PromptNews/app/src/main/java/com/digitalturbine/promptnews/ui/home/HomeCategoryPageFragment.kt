@@ -83,6 +83,12 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
         }
     }
 
+    fun refreshOnTabSelected() {
+        if (category.type == HomeCategoryType.INTEREST && !isLoading) {
+            loadFeed()
+        }
+    }
+
     private fun loadFeed() {
         isLoading = true
         showLoading()
