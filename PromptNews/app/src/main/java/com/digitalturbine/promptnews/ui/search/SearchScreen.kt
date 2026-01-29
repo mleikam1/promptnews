@@ -47,8 +47,7 @@ import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.format.TextStyle
+import java.util.Calendar
 import java.util.Locale
 
 private val DEFAULT_TRENDING_PROMPTS = listOf(
@@ -161,9 +160,8 @@ fun SearchScreen(
                 item {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "Trending Prompts for ${formatTrendingDate(LocalDate.now())}",
+                            text = trendingTitleForToday(),
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -421,20 +419,25 @@ private fun TrendingPill(
     }
 }
 
-private fun formatTrendingDate(date: LocalDate): String {
-    val month = date.month.getDisplayName(TextStyle.FULL, Locale.US)
-    val day = date.dayOfMonth
-    return "$month $day${ordinalSuffix(day)}"
-}
+private fun trendingTitleForToday(): String {
+    val calendar = Calendar.getInstance()
+    val month = calendar.getDisplayName(
+        Calendar.MONTH,
+        Calendar.LONG,
+        Locale.getDefault()
+    ) ?: ""
 
-private fun ordinalSuffix(day: Int): String {
-    if (day in 11..13) return "th"
-    return when (day % 10) {
-        1 -> "st"
-        2 -> "nd"
-        3 -> "rd"
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+
+    val suffix = when {
+        day in 11..13 -> "th"
+        day % 10 == 1 -> "st"
+        day % 10 == 2 -> "nd"
+        day % 10 == 3 -> "rd"
         else -> "th"
     }
+
+    return "Trending Prompts for $month $day$suffix"
 }
 
 
