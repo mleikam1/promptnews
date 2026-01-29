@@ -1,6 +1,5 @@
 package com.digitalturbine.promptnews.data.fotoscapes
 
-import android.net.Uri
 import android.util.Log
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.FotoscapesEndpoints
@@ -72,39 +71,45 @@ class FotoscapesRepository {
             val body = resp.body?.string().orEmpty()
             Log.d(TAG, "Response body: $body")
             if (body.isBlank()) return@withContext emptyList()
-            val root = JSONObject(body)
-            val status = root.optString("status")
-            val items = root.optJSONArray("items") ?: JSONArray()
-            Log.d(TAG, "Response status: $status count=${items.length()}")
+            return@withContext runCatching {
+                val root = JSONObject(body)
+                val status = root.optString("status")
+                val items = root.optJSONArray("items") ?: JSONArray()
+                Log.d(TAG, "Response status: $status count=${items.length()}")
+                if (status.isNotBlank() && !status.equals("ok", ignoreCase = true)) {
+                    emptyList()
+                } else {
+                    (0 until items.length()).mapNotNull { i ->
+                        val j = items.optJSONObject(i) ?: return@mapNotNull null
+                        val title = localizedText(j, "title")
+                        val summary = localizedText(j, "summary")
+                        val link = j.optString("link")
+                        if (link.isBlank()) return@mapNotNull null
+                        val img = previewLink(j)
+                        val age = TimeLabelFormatter.formatTimeLabel(j.optString("publishOn"))
 
-            (0 until items.length()).mapNotNull { i ->
-                val j = items.optJSONObject(i) ?: return@mapNotNull null
-                val title = j.opt("title")?.let { if (it is String) it else (it as? JSONObject)?.optString("en") }
-                    .orEmpty()
-                val link = j.optString("link").ifBlank { j.optString("sourceLink") }
-                val img = firstHttp(j.opt("previews")) ?: firstHttp(j.opt("images")) ?: ""
-                if (title.isBlank() || link.isBlank() || img.isBlank()) return@mapNotNull null
-
-                val logo = j.optString("brandLogoDark").ifBlank { j.optString("brandLogo") }
-                    .ifBlank { favicon(link) }
-                val age = TimeLabelFormatter.formatTimeLabel(
-                    j.optString("publishOn").ifBlank { j.optString("scheduledOn") }
-                )
-
-                Article(
-                    title = title,
-                    url = link,
-                    imageUrl = tryUpscaleCdn(img),
-                    logoUrl = logo,
-                    sourceName = j.optString("owner").ifBlank { null },
-                    ageLabel = age,
-                    interest = interest ?: "",
-                    isFotoscapes = true,
-                    fotoscapesUid = j.optString("uid"),
-                    fotoscapesLbtype = j.optString("lbtype")
-                )
-            }.also { articles ->
-                Log.d(TAG, "Response count: ${articles.size}")
+                        Article(
+                            title = title,
+                            url = link,
+                            imageUrl = if (img.isBlank()) "" else tryUpscaleCdn(img),
+                            logoUrl = j.optString("brandLogo"),
+                            logoUrlDark = j.optString("brandLogoDark"),
+                            sourceName = j.optString("owner").ifBlank { null },
+                            ageLabel = age,
+                            summary = summary.ifBlank { null },
+                            interest = interest ?: "",
+                            isFotoscapes = true,
+                            fotoscapesUid = j.optString("uid"),
+                            fotoscapesLbtype = j.optString("lbtype"),
+                            fotoscapesSourceLink = j.optString("sourceLink")
+                        )
+                    }.also { articles ->
+                        Log.d(TAG, "Response count: ${articles.size}")
+                    }
+                }
+            }.getOrElse { err ->
+                Log.w(TAG, "Failed to parse FotoScapes response", err)
+                emptyList()
             }
         }
     }
@@ -121,29 +126,23 @@ data class InterestSectionResult(
     val articles: List<Article>
 )
 
-private fun favicon(url: String, size: Int = 64): String = runCatching {
-    val u = Uri.parse(url)
-    "https://www.google.com/s2/favicons?domain=${u.scheme}://${u.host}&sz=$size"
-}.getOrElse { "" }
-
-private fun firstHttp(obj: Any?): String? {
-    when (obj) {
-        is String -> if (obj.startsWith("http")) return obj
-        is JSONObject -> {
-            for (k in obj.keys()) {
-                val v = obj.opt(k)
-                firstHttp(v)?.let { return it }
-            }
-        }
-        is JSONArray -> {
-            for (i in 0 until obj.length()) {
-                firstHttp(obj.opt(i))?.let { return it }
-            }
-        }
-    }
-    return null
-}
-
 private fun tryUpscaleCdn(url: String): String =
     url.replace(Regex("=w\\d{2,4}(-h\\d{2,4})?(-no)?"), "=w1200-h800")
         .replace(Regex("=s\\d{2,4}"), "=s1200")
+
+private fun localizedText(obj: JSONObject, key: String): String {
+    return when (val value = obj.opt(key)) {
+        is JSONObject -> value.optString("en")
+        is String -> value
+        else -> ""
+    }
+}
+
+private fun previewLink(obj: JSONObject): String {
+    val previews = obj.optJSONArray("previews") ?: return ""
+    return when (val first = previews.opt(0)) {
+        is JSONObject -> first.optString("link")
+        is String -> first
+        else -> ""
+    }
+}

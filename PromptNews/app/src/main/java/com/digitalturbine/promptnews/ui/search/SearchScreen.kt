@@ -1,6 +1,7 @@
 package com.digitalturbine.promptnews.ui.search
 
 import android.content.Intent
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,6 +38,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.Clip
 import com.digitalturbine.promptnews.data.SearchUi
+import com.digitalturbine.promptnews.data.isFotoscapesStory
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
 import com.digitalturbine.promptnews.ui.PromptNewsTopBar
@@ -85,7 +87,20 @@ fun SearchScreen(
 
     var text by remember { mutableStateOf("") }
     var lastQuery by remember { mutableStateOf("") }
+    fun openArticle(article: Article) {
+        if (article.isFotoscapesStory()) {
+            Log.d(
+                "Fotoscapes",
+                "Click uid=${article.fotoscapesUid} lbtype=${article.fotoscapesLbtype} " +
+                    "link=${article.url} sourceLink=${article.fotoscapesSourceLink}"
+            )
+        }
+        if (article.url.isBlank()) return
+        ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", article.url))
+    }
+
     fun openArticle(url: String) {
+        if (url.isBlank()) return
         ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", url))
     }
     fun runSearch(q: String, type: HistoryType, recordHistory: Boolean) {
@@ -212,13 +227,13 @@ fun SearchScreen(
                         // Hero
                         s.hero?.let { hero ->
                             item {
-                                HeroCard(hero) { openArticle(hero.url) }
+                                HeroCard(hero) { openArticle(hero) }
                                 Spacer(Modifier.height(8.dp))
                             }
                         }
                         // list
                         items(s.rows) { a ->
-                            RowCard(a, onClick = { openArticle(a.url) })
+                            RowCard(a, onClick = { openArticle(a) })
                             HorizontalDivider(thickness = 0.5.dp)
                         }
 
