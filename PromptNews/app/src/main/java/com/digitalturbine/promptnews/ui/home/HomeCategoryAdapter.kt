@@ -19,8 +19,9 @@ import com.digitalturbine.promptnews.R
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.isFotoscapesStory
 import com.digitalturbine.promptnews.data.logoUrlForTheme
+import com.digitalturbine.promptnews.data.fotoscapes.FotoscapesArticle
 import com.digitalturbine.promptnews.ui.components.FotoscapesArticleCard
-import com.digitalturbine.promptnews.ui.fotoscapes.FotoscapesArticleUi
+import com.digitalturbine.promptnews.ui.fotoscapes.toFotoscapesArticleUi
 import com.digitalturbine.promptnews.ui.fotoscapes.toFotoscapesUi
 import com.google.android.material.button.MaterialButton
 
@@ -253,9 +254,8 @@ class HomeCategoryAdapter(
             )
         }
 
-        fun bind(article: Article) {
-            val ui = article.toFotoscapesUi()
-            if (ui !is FotoscapesArticleUi) return
+        fun bind(article: FotoscapesArticle) {
+            val ui = article.toFotoscapesArticleUi()
             composeView.setContent {
                 MaterialTheme {
                     FotoscapesArticleCard(ui)
@@ -337,9 +337,9 @@ private object HomeFeedDiff : DiffUtil.ItemCallback<HomeFeedItem>() {
                 oldItem.article.url.ifBlank { oldItem.article.fotoscapesUid.ifBlank { oldItem.article.title } } ==
                     newItem.article.url.ifBlank { newItem.article.fotoscapesUid.ifBlank { newItem.article.title } }
             oldItem is HomeFeedItem.FotoscapesArticle && newItem is HomeFeedItem.FotoscapesArticle ->
-                oldItem.article.fotoscapesUid.ifBlank { oldItem.article.title } ==
-                    newItem.article.fotoscapesUid.ifBlank { newItem.article.title } &&
-                    oldItem.article.fotoscapesLbtype == newItem.article.fotoscapesLbtype
+                oldItem.article.id.ifBlank { oldItem.article.title } ==
+                    newItem.article.id.ifBlank { newItem.article.title } &&
+                    oldItem.article.lbType == newItem.article.lbType
             oldItem is HomeFeedItem.TrendingPulse && newItem is HomeFeedItem.TrendingPulse ->
                 oldItem.article.url == newItem.article.url && oldItem.rank == newItem.rank
             oldItem is HomeFeedItem.CtaButton && newItem is HomeFeedItem.CtaButton ->

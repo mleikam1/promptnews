@@ -1,13 +1,11 @@
 package com.digitalturbine.promptnews.data.fotoscapes
 
 import android.util.Log
-import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.FotoscapesEndpoints
 import com.digitalturbine.promptnews.data.Interest
 import com.digitalturbine.promptnews.data.toFotoscapesKey
 import com.digitalturbine.promptnews.data.toFotoscapesSched
 import com.digitalturbine.promptnews.data.net.Http
-import com.digitalturbine.promptnews.util.TimeLabelFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -25,7 +23,7 @@ class FotoscapesRepository {
             }.awaitAll()
         }
 
-    private suspend fun fetchInterest(interest: Interest): List<Article> = withContext(Dispatchers.IO) {
+    private suspend fun fetchInterest(interest: Interest): List<FotoscapesArticle> = withContext(Dispatchers.IO) {
         fetchInterestFeed(
             interest = interest,
             limit = DEFAULT_LIMIT
@@ -35,7 +33,7 @@ class FotoscapesRepository {
     suspend fun fetchInterestFeed(
         interest: Interest,
         limit: Int
-    ): List<Article> = withContext(Dispatchers.IO) {
+    ): List<FotoscapesArticle> = withContext(Dispatchers.IO) {
         val sched = interest.toFotoscapesSched()
         Log.e("FS_TRACE", "USING sched=$sched")
         val interestKey = interest.toFotoscapesKey()
@@ -57,7 +55,7 @@ class FotoscapesRepository {
         limit: Int,
         schedule: String,
         geo: String?
-    ): List<Article> = withContext(Dispatchers.IO) {
+    ): List<FotoscapesArticle> = withContext(Dispatchers.IO) {
         val url = FotoscapesEndpoints.contentEndpoint(
             category = category,
             interest = interest,
@@ -79,40 +77,28 @@ class FotoscapesRepository {
                 val root = JSONObject(body)
                 val items = root.optJSONArray("items") ?: JSONArray()
                 Log.d(TAG, "Response count (raw): ${items.length()}")
-                (0 until items.length()).map { i ->
+                val mappedItems = (0 until items.length()).map { i ->
                     val j = items.optJSONObject(i) ?: JSONObject()
                     val title = localizedText(j, "title")
                     val summary = localizedText(j, "summary")
                     val body = localizedText(j, "body")
-                    val link = j.optString("link").ifBlank { j.optString("sourceLink") }
+                    val articleUrl = j.optString("link").ifBlank { j.optString("sourceLink") }
                     val previews = previewLinks(j)
-                    val img = previews.firstOrNull().orEmpty()
-                    val age = TimeLabelFormatter.formatTimeLabel(j.optString("publishOn"))
-                    val owner = j.optString("owner").orEmpty()
+                    val imageUrl = previews.firstOrNull()
 
-                    Article(
+                    FotoscapesArticle(
+                        id = j.optString("uid"),
+                        lbType = j.optString("lbtype").ifBlank { "unknown" },
                         title = title,
-                        url = link,
-                        imageUrl = if (img.isBlank()) "" else tryUpscaleCdn(img),
-                        logoUrl = j.optString("brandLogo"),
-                        logoUrlDark = j.optString("brandLogoDark"),
-                        sourceName = owner.ifBlank { null },
-                        ageLabel = age,
-                        summary = summary.ifBlank { body }.ifBlank { "" },
-                        interest = interest.orEmpty(),
-                        isFotoscapes = true,
-                        fotoscapesUid = j.optString("uid"),
-                        fotoscapesLbtype = j.optString("lbtype"),
-                        fotoscapesSourceLink = j.optString("sourceLink"),
-                        fotoscapesTitleEn = title,
-                        fotoscapesSummaryEn = summary,
-                        fotoscapesBodyEn = body,
-                        fotoscapesPreviewLinks = previews,
-                        fotoscapesLink = link
+                        summary = summary,
+                        body = body,
+                        imageUrl = imageUrl,
+                        articleUrl = articleUrl
                     )
-                }.also { articles ->
-                    Log.d(TAG, "Response count (mapped): ${articles.size}")
                 }
+                Log.d("FS_MAP", "Mapped ${mappedItems.size} Fotoscapes items")
+                Log.d(TAG, "Response count (mapped): ${mappedItems.size}")
+                mappedItems
             }.getOrElse { err ->
                 Log.w(TAG, "Failed to parse FotoScapes response", err)
                 emptyList()
@@ -128,12 +114,8 @@ class FotoscapesRepository {
 
 data class InterestSectionResult(
     val interest: Interest,
-    val articles: List<Article>
+    val articles: List<FotoscapesArticle>
 )
-
-private fun tryUpscaleCdn(url: String): String =
-    url.replace(Regex("=w\\d{2,4}(-h\\d{2,4})?(-no)?"), "=w1200-h800")
-        .replace(Regex("=s\\d{2,4}"), "=s1200")
 
 private fun localizedText(obj: JSONObject, key: String): String {
     return when (val value = obj.opt(key)) {

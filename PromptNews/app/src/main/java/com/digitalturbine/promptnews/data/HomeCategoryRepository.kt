@@ -2,13 +2,14 @@ package com.digitalturbine.promptnews.data
 
 import android.util.Log
 import com.digitalturbine.promptnews.data.fotoscapes.FotoscapesRepository
+import com.digitalturbine.promptnews.data.fotoscapes.FotoscapesArticle
 import com.digitalturbine.promptnews.data.serpapi.SerpApiRepository
 import com.digitalturbine.promptnews.ui.home.HomeCategory
 import com.digitalturbine.promptnews.ui.home.HomeCategoryType
 
 data class HomeCategoryContent(
     val local: List<Article> = emptyList(),
-    val feed: List<Article> = emptyList()
+    val feed: List<FotoscapesArticle> = emptyList()
 )
 
 class HomeCategoryRepository(
@@ -34,7 +35,7 @@ class HomeCategoryRepository(
         )
     }
 
-    suspend fun loadFotoscapesInterest(category: HomeCategory): List<Article> {
+    suspend fun loadFotoscapesInterest(category: HomeCategory): List<FotoscapesArticle> {
         val interest = if (category.id.isNotBlank()) {
             Interest(category.id, category.displayName, category.endpoint)
         } else {
