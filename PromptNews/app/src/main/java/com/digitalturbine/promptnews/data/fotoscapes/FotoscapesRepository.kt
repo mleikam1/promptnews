@@ -44,7 +44,7 @@ class FotoscapesRepository {
             schedule = schedule,
             geo = null
         )
-        Log.d(TAG, "Interest=$interestKey count=${items.size}")
+        Log.d(TAG, "Interest=$interestKey rawCount=${items.size}")
         items
     }
 
@@ -73,39 +73,33 @@ class FotoscapesRepository {
             if (body.isBlank()) return@withContext emptyList()
             return@withContext runCatching {
                 val root = JSONObject(body)
-                val status = root.optString("status")
                 val items = root.optJSONArray("items") ?: JSONArray()
-                Log.d(TAG, "Response status: $status count=${items.length()}")
-                if (status.isNotBlank() && !status.equals("ok", ignoreCase = true)) {
-                    emptyList()
-                } else {
-                    (0 until items.length()).mapNotNull { i ->
-                        val j = items.optJSONObject(i) ?: return@mapNotNull null
-                        val title = localizedText(j, "title")
-                        val summary = localizedText(j, "summary")
-                        val link = j.optString("link")
-                        if (link.isBlank()) return@mapNotNull null
-                        val img = previewLink(j)
-                        val age = TimeLabelFormatter.formatTimeLabel(j.optString("publishOn"))
+                Log.d(TAG, "Response count (raw): ${items.length()}")
+                (0 until items.length()).map { i ->
+                    val j = items.optJSONObject(i) ?: JSONObject()
+                    val title = localizedText(j, "title")
+                    val summary = localizedText(j, "summary")
+                    val link = j.optString("link")
+                    val img = previewLink(j)
+                    val age = TimeLabelFormatter.formatTimeLabel(j.optString("publishOn"))
 
-                        Article(
-                            title = title,
-                            url = link,
-                            imageUrl = if (img.isBlank()) "" else tryUpscaleCdn(img),
-                            logoUrl = j.optString("brandLogo"),
-                            logoUrlDark = j.optString("brandLogoDark"),
-                            sourceName = j.optString("owner").ifBlank { null },
-                            ageLabel = age,
-                            summary = summary.ifBlank { null },
-                            interest = interest ?: "",
-                            isFotoscapes = true,
-                            fotoscapesUid = j.optString("uid"),
-                            fotoscapesLbtype = j.optString("lbtype"),
-                            fotoscapesSourceLink = j.optString("sourceLink")
-                        )
-                    }.also { articles ->
-                        Log.d(TAG, "Response count: ${articles.size}")
-                    }
+                    Article(
+                        title = title,
+                        url = link,
+                        imageUrl = if (img.isBlank()) "" else tryUpscaleCdn(img),
+                        logoUrl = j.optString("brandLogo"),
+                        logoUrlDark = j.optString("brandLogoDark"),
+                        sourceName = j.optString("owner").ifBlank { null },
+                        ageLabel = age,
+                        summary = summary,
+                        interest = interest ?: "",
+                        isFotoscapes = true,
+                        fotoscapesUid = j.optString("uid"),
+                        fotoscapesLbtype = j.optString("lbtype"),
+                        fotoscapesSourceLink = j.optString("sourceLink")
+                    )
+                }.also { articles ->
+                    Log.d(TAG, "Response count (mapped): ${articles.size}")
                 }
             }.getOrElse { err ->
                 Log.w(TAG, "Failed to parse FotoScapes response", err)

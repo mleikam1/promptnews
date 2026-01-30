@@ -99,6 +99,15 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
 
             if (!isAdded) return@launch
 
+            if (category.type == HomeCategoryType.INTEREST) {
+                val first = content.feed.firstOrNull()
+                Log.d("Fotoscapes", "HomeScreen list size=${content.feed.size}")
+                Log.d(
+                    "Fotoscapes",
+                    "HomeScreen first item lbtype=${first?.fotoscapesLbtype} uid=${first?.fotoscapesUid}"
+                )
+            }
+
             val items = buildItems(
                 local = content.local,
                 feed = content.feed,
