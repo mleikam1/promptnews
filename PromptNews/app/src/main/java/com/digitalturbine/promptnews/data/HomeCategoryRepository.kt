@@ -42,18 +42,31 @@ class HomeCategoryRepository(
         } ?: return emptyList()
 
         val interestKey = interest.toFotoscapesKey()
+        Log.e("FS_TRACE", "FETCH START interest=$interestKey")
         Log.d("Fotoscapes", "Fetching interest=$interestKey")
+        val schedule = fotoscapesScheduleForInterest(interest)
         val results = fotoscapesRepository.fetchInterestFeed(
             interestKey = interestKey,
             limit = FEED_COUNT,
-            schedule = FOTOSCAPES_SCHEDULE
+            schedule = schedule
         )
+        Log.e("FS_TRACE", "FETCH END count=${results.size}")
         Log.d("Fotoscapes", "Returned count=${results.size}")
         return results
     }
 
     companion object {
         private const val FEED_COUNT = 10
-        private const val FOTOSCAPES_SCHEDULE = "promptnews"
+    }
+
+    private fun fotoscapesScheduleForInterest(interest: Interest): String {
+        return when (interest.id) {
+            "business" -> "business"
+            "entertainment" -> "entertainment"
+            "food-drink" -> "fooddrink"
+            "health" -> "health"
+            "celebrities", "celebrity-homes" -> "celebrity"
+            else -> "general"
+        }
     }
 }

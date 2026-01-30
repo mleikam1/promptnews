@@ -7,6 +7,16 @@ import android.util.Log
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.unit.dp
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -32,11 +42,13 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
     private var prefsListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     private lateinit var feedView: RecyclerView
+    private lateinit var debugView: ComposeView
     private lateinit var loadingView: ProgressBar
     private lateinit var errorView: TextView
 
     private var isLoading: Boolean = false
     private var hasLoaded: Boolean = false
+    private var fotoscapesItems: List<Article> = emptyList()
 
     private lateinit var category: HomeCategory
 
@@ -53,11 +65,15 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         feedView = view.findViewById(R.id.home_category_feed)
+        debugView = view.findViewById(R.id.home_category_debug)
         loadingView = view.findViewById(R.id.home_category_loading)
         errorView = view.findViewById(R.id.home_category_error)
 
         feedView.layoutManager = LinearLayoutManager(requireContext())
         feedView.adapter = feedAdapter
+        debugView.setViewCompositionStrategy(
+            ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
+        )
 
         loadFeed()
     }
@@ -116,12 +132,27 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
             if (!isAdded) return@launch
 
             if (category.type == HomeCategoryType.INTEREST) {
+                fotoscapesItems = feed
+                Log.e("FS_TRACE", "STATE SET size=${fotoscapesItems.size}")
+            }
+
+            if (category.type == HomeCategoryType.INTEREST) {
                 val first = feed.firstOrNull()
                 Log.d("Fotoscapes", "HomeScreen list size=${feed.size}")
                 Log.d(
                     "Fotoscapes",
                     "HomeScreen first item lbtype=${first?.fotoscapesLbtype} uid=${first?.fotoscapesUid}"
                 )
+            }
+
+            if (category.type == HomeCategoryType.INTEREST) {
+                debugView.setContent {
+                    FotoscapesDebugList(items = fotoscapesItems)
+                }
+                isLoading = false
+                hasLoaded = true
+                showDebugContent()
+                return@launch
             }
 
             val items = buildItems(
@@ -188,6 +219,7 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
         loadingView.isVisible = true
         errorView.isVisible = false
         feedView.isVisible = false
+        debugView.isVisible = false
     }
 
     private fun showEmptyState(message: String) {
@@ -195,10 +227,19 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
         errorView.isVisible = true
         loadingView.isVisible = false
         feedView.isVisible = false
+        debugView.isVisible = false
     }
 
     private fun showContent() {
         feedView.isVisible = true
+        loadingView.isVisible = false
+        errorView.isVisible = false
+        debugView.isVisible = false
+    }
+
+    private fun showDebugContent() {
+        debugView.isVisible = true
+        feedView.isVisible = false
         loadingView.isVisible = false
         errorView.isVisible = false
     }
@@ -272,6 +313,26 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
                     ARG_ENDPOINT to category.endpoint
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun FotoscapesDebugList(items: List<Article>) {
+    LaunchedEffect(items) {
+        Log.e("FS_TRACE", "UI RECEIVED size=${items.size}")
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text("DEBUG Fotoscapes count = ${items.size}")
+        items.forEach { item ->
+            Text(
+                text = "• ${item.title}",
+                modifier = Modifier.padding(8.dp)
+            )
         }
     }
 }

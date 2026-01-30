@@ -62,6 +62,7 @@ class FotoscapesRepository {
             schedule = schedule,
             geo = geo
         )
+        Log.e("FS_TRACE", "REQUEST url=$url")
         Log.d(
             TAG,
             "Request params: category=$category interest=$interest limit=$limit schedule=$schedule geo=$geo url=$url"
