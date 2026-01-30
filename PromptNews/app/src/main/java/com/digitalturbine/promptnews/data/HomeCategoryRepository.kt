@@ -15,16 +15,21 @@ class HomeCategoryRepository(
     private val fotoscapesRepository: FotoscapesRepository = FotoscapesRepository(),
     private val serpApiRepository: SerpApiRepository = SerpApiRepository()
 ) {
-    suspend fun fetchCategory(category: HomeCategory, locationLabel: String): HomeCategoryContent {
+    suspend fun fetchCategory(category: HomeCategory, userLocation: UserLocation?): HomeCategoryContent {
         return when (category.type) {
-            HomeCategoryType.HOME -> HomeCategoryContent(local = loadLocalNews(locationLabel))
+            HomeCategoryType.HOME -> HomeCategoryContent(local = loadLocalNews(userLocation))
             HomeCategoryType.INTEREST -> HomeCategoryContent(feed = loadFotoscapesInterest(category))
         }
     }
 
-    suspend fun loadLocalNews(locationLabel: String): List<Article> {
+    suspend fun loadLocalNews(location: UserLocation?): List<Article> {
+        if (location == null) {
+            Log.d("LocalNews", "SerpApi location missing")
+            return emptyList()
+        }
+        Log.d("LocalNews", "SerpApi location=${location.city}, ${location.state}")
         return serpApiRepository.fetchLocalNews(
-            location = locationLabel,
+            location = "${location.city}, ${location.state}",
             query = "local news"
         )
     }

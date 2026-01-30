@@ -43,6 +43,7 @@ import com.digitalturbine.promptnews.ui.search.SearchScreenState
 import com.digitalturbine.promptnews.ui.sports.SportsScreen
 import com.digitalturbine.promptnews.data.sports.SportsRepository
 import com.digitalturbine.promptnews.util.HomePrefs
+import com.digitalturbine.promptnews.data.UserLocation
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
 import com.digitalturbine.promptnews.data.UserInterestRepositoryImpl
@@ -65,7 +66,7 @@ class MainActivity : FragmentActivity() {
         if (granted) {
             resolveAndStoreLocation()
         } else {
-            HomePrefs.setLocation(this, "")
+            HomePrefs.setUserLocation(this, null)
         }
     }
 
@@ -237,7 +238,7 @@ class MainActivity : FragmentActivity() {
             }
             return
         }
-        if (hasCoarseLocation() && HomePrefs.getLocation(this).isBlank()) {
+        if (hasCoarseLocation() && HomePrefs.getUserLocation(this) == null) {
             resolveAndStoreLocation()
         }
     }
@@ -255,9 +256,9 @@ class MainActivity : FragmentActivity() {
         lifecycleScope.launch {
             val location = getCoarseLocation(locationManager)
             if (location != null) {
-                val label = withContext(Dispatchers.IO) { reverseGeocode(location) }
-                if (!label.isNullOrBlank()) {
-                    HomePrefs.setLocation(this@MainActivity, label)
+                val userLocation = withContext(Dispatchers.IO) { reverseGeocode(location) }
+                if (userLocation != null) {
+                    HomePrefs.setUserLocation(this@MainActivity, userLocation)
                 }
             }
         }
@@ -284,15 +285,19 @@ class MainActivity : FragmentActivity() {
     }
 
     @Suppress("DEPRECATION")
-    private fun reverseGeocode(location: Location): String? {
+    private fun reverseGeocode(location: Location): UserLocation? {
         if (!Geocoder.isPresent()) return null
         val geocoder = Geocoder(this, Locale.getDefault())
         val results = geocoder.getFromLocation(location.latitude, location.longitude, 1)
         val address = results?.firstOrNull() ?: return null
         val city = address.locality ?: address.subAdminArea ?: address.subLocality
         val state = address.adminArea ?: address.subAdminArea
-        val parts = listOfNotNull(city?.takeIf { it.isNotBlank() }, state?.takeIf { it.isNotBlank() })
-        return parts.joinToString(", ").ifBlank { null }
+        val resolvedCity = city?.takeIf { it.isNotBlank() }
+        val resolvedState = state?.takeIf { it.isNotBlank() }
+        if (resolvedCity.isNullOrBlank() || resolvedState.isNullOrBlank()) {
+            return null
+        }
+        return UserLocation(city = resolvedCity, state = resolvedState)
     }
 }
 
