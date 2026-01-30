@@ -53,12 +53,14 @@ private fun localizedText(obj: JSONObject, key: String): String {
     }
 }
 
-private fun previewLink(obj: JSONObject): String {
-    val previews = obj.optJSONArray("previews") ?: return ""
-    return when (val first = previews.opt(0)) {
-        is JSONObject -> first.optString("link")
-        is String -> first
-        else -> ""
+private fun previewLinks(obj: JSONObject): List<String> {
+    val previews = obj.optJSONArray("previews") ?: return emptyList()
+    return (0 until previews.length()).mapNotNull { index ->
+        when (val item = previews.opt(index)) {
+            is JSONObject -> item.optString("link")
+            is String -> item
+            else -> null
+        }.takeIf { it.isNotBlank() }
     }
 }
 
@@ -104,13 +106,14 @@ class SearchRepository {
                     if (status.isNotBlank() && !status.equals("ok", ignoreCase = true)) {
                         emptyList()
                     } else {
-                        (0 until items.length()).asSequence().mapNotNull { i ->
-                            val j = items.optJSONObject(i) ?: return@mapNotNull null
+                        (0 until items.length()).asSequence().map { i ->
+                            val j = items.optJSONObject(i) ?: JSONObject()
                             val title = localizedText(j, "title")
                             val summary = localizedText(j, "summary")
+                            val body = localizedText(j, "body")
                             val link = j.optString("link")
-                            if (link.isBlank()) return@mapNotNull null
-                            val img = previewLink(j)
+                            val previews = previewLinks(j)
+                            val img = previews.firstOrNull().orEmpty()
                             val age = TimeLabelFormatter.formatTimeLabel(j.optString("publishOn"))
 
                             Article(
@@ -121,12 +124,17 @@ class SearchRepository {
                                 logoUrlDark = j.optString("brandLogoDark"),
                                 sourceName = j.optString("owner").ifBlank { null },
                                 ageLabel = age,
-                                summary = summary.ifBlank { null },
+                                summary = summary.ifBlank { body }.ifBlank { null },
                                 interest = inferInterest(title),
                                 isFotoscapes = true,
                                 fotoscapesUid = j.optString("uid"),
                                 fotoscapesLbtype = j.optString("lbtype"),
-                                fotoscapesSourceLink = j.optString("sourceLink")
+                                fotoscapesSourceLink = j.optString("sourceLink"),
+                                fotoscapesTitleEn = title,
+                                fotoscapesSummaryEn = summary,
+                                fotoscapesBodyEn = body,
+                                fotoscapesPreviewLinks = previews,
+                                fotoscapesLink = link
                             )
                         }.take(limit).toList()
                     }

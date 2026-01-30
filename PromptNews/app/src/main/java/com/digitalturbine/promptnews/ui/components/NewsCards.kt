@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.ElevatedCard
@@ -34,6 +36,7 @@ import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.logoUrlForTheme
+import com.digitalturbine.promptnews.ui.fotoscapes.FotoscapesArticleUi
 
 @Composable
 fun HeroCard(article: Article, onClick: () -> Unit) {
@@ -103,6 +106,47 @@ fun HeroCard(article: Article, onClick: () -> Unit) {
                     fontWeight = FontWeight.ExtraBold
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun FotoscapesArticleCard(article: FotoscapesArticleUi) {
+    val scrollState = rememberScrollState()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(scrollState)
+            .padding(16.dp)
+    ) {
+        val imageUrl = article.imageUrl.orEmpty()
+        if (imageUrl.isNotBlank()) {
+            val placeholderPainter = rememberVectorPainter(Icons.Default.Image)
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                placeholder = placeholderPainter,
+                error = placeholderPainter,
+                fallback = placeholderPainter,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(12.dp))
+            )
+            Spacer(Modifier.height(12.dp))
+        }
+        Text(
+            text = article.title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        if (article.body.isNotBlank()) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = article.body,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }

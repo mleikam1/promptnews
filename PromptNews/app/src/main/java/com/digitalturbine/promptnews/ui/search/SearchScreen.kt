@@ -44,7 +44,11 @@ import com.digitalturbine.promptnews.data.history.HistoryType
 import com.digitalturbine.promptnews.ui.PromptNewsTopBar
 import com.digitalturbine.promptnews.util.isNflIntent
 import com.digitalturbine.promptnews.ui.components.HeroCard
+import com.digitalturbine.promptnews.ui.components.FotoscapesArticleCard
 import com.digitalturbine.promptnews.ui.components.RowCard
+import com.digitalturbine.promptnews.ui.fotoscapes.FotoscapesArticleUi
+import com.digitalturbine.promptnews.ui.fotoscapes.FotoscapesExternalUi
+import com.digitalturbine.promptnews.ui.fotoscapes.toFotoscapesUi
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -95,6 +99,7 @@ fun SearchScreen(
                     "link=${article.url} sourceLink=${article.fotoscapesSourceLink}"
             )
         }
+        if (article.fotoscapesLbtype.equals("article", ignoreCase = true)) return
         if (article.url.isBlank()) return
         ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", article.url))
     }
@@ -227,13 +232,37 @@ fun SearchScreen(
                         // Hero
                         s.hero?.let { hero ->
                             item {
-                                HeroCard(hero) { openArticle(hero) }
+                                if (hero.fotoscapesLbtype.equals("article", ignoreCase = true)) {
+                                    val ui = remember(hero) { hero.toFotoscapesUi() }
+                                    if (ui is FotoscapesArticleUi) {
+                                        FotoscapesArticleCard(ui)
+                                    }
+                                } else if (hero.isFotoscapesStory()) {
+                                    val ui = remember(hero) { hero.toFotoscapesUi() }
+                                    if (ui is FotoscapesExternalUi) {
+                                        HeroCard(hero) { openArticle(ui.link) }
+                                    }
+                                } else {
+                                    HeroCard(hero) { openArticle(hero) }
+                                }
                                 Spacer(Modifier.height(8.dp))
                             }
                         }
                         // list
                         items(s.rows) { a ->
-                            RowCard(a, onClick = { openArticle(a) })
+                            if (a.fotoscapesLbtype.equals("article", ignoreCase = true)) {
+                                val ui = remember(a) { a.toFotoscapesUi() }
+                                if (ui is FotoscapesArticleUi) {
+                                    FotoscapesArticleCard(ui)
+                                }
+                            } else if (a.isFotoscapesStory()) {
+                                val ui = remember(a) { a.toFotoscapesUi() }
+                                if (ui is FotoscapesExternalUi) {
+                                    RowCard(a, onClick = { openArticle(ui.link) })
+                                }
+                            } else {
+                                RowCard(a, onClick = { openArticle(a) })
+                            }
                             HorizontalDivider(thickness = 0.5.dp)
                         }
 

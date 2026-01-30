@@ -36,6 +36,7 @@ sealed class HomeFeedItem {
     data class SectionHeader(val title: String) : HomeFeedItem()
     data class SmallCard(val article: Article) : HomeFeedItem()
     data class FeedCard(val article: Article) : HomeFeedItem()
+    data class FotoscapesArticle(val article: Article) : HomeFeedItem()
     data class TrendingPulse(val rank: Int, val article: Article, val indicator: TrendIndicator) : HomeFeedItem()
     data class CtaButton(val label: String) : HomeFeedItem()
 }
