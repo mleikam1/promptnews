@@ -13,7 +13,12 @@ data class Article(
     val isFotoscapes: Boolean = false,
     val fotoscapesUid: String = "",
     val fotoscapesLbtype: String = "",
-    val fotoscapesSourceLink: String = ""
+    val fotoscapesSourceLink: String = "",
+    val fotoscapesTitleEn: String = "",
+    val fotoscapesSummaryEn: String = "",
+    val fotoscapesBodyEn: String = "",
+    val fotoscapesPreviewLinks: List<String> = emptyList(),
+    val fotoscapesLink: String = ""
 )
 
 fun Article.isFotoscapesStory(): Boolean {

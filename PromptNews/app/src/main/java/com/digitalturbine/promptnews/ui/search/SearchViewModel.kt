@@ -42,7 +42,9 @@ class SearchViewModel(
                     emptyList()
                 }
 
-                val list = (serp + fs).distinctBy { it.url }
+                val list = (serp + fs).distinctBy { article ->
+                    article.url.ifBlank { article.fotoscapesUid.ifBlank { article.title } }
+                }
                 val hero = list.firstOrNull()
                 val rows = list.drop(1).take(4)
 

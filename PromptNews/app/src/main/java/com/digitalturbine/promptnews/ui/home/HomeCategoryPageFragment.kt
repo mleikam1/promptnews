@@ -150,7 +150,15 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
         } else {
             if (feed.isNotEmpty()) {
                 items.add(HomeFeedItem.SectionHeader(getString(R.string.home_latest_stories)))
-                items.addAll(feed.take(FEED_COUNT).map { HomeFeedItem.FeedCard(it) })
+                items.addAll(
+                    feed.take(FEED_COUNT).map { article ->
+                        if (article.fotoscapesLbtype.equals("article", ignoreCase = true)) {
+                            HomeFeedItem.FotoscapesArticle(article)
+                        } else {
+                            HomeFeedItem.FeedCard(article)
+                        }
+                    }
+                )
             }
         }
         return items
@@ -203,6 +211,7 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
                     "link=${article.url} sourceLink=${article.fotoscapesSourceLink}"
             )
         }
+        if (article.fotoscapesLbtype.equals("article", ignoreCase = true)) return
         if (article.url.isBlank()) return
         openWebView(article.url)
     }

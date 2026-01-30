@@ -79,8 +79,10 @@ class FotoscapesRepository {
                     val j = items.optJSONObject(i) ?: JSONObject()
                     val title = localizedText(j, "title")
                     val summary = localizedText(j, "summary")
+                    val body = localizedText(j, "body")
                     val link = j.optString("link")
-                    val img = previewLink(j)
+                    val previews = previewLinks(j)
+                    val img = previews.firstOrNull().orEmpty()
                     val age = TimeLabelFormatter.formatTimeLabel(j.optString("publishOn"))
 
                     Article(
@@ -91,12 +93,17 @@ class FotoscapesRepository {
                         logoUrlDark = j.optString("brandLogoDark"),
                         sourceName = j.optString("owner").ifBlank { null },
                         ageLabel = age,
-                        summary = summary,
+                        summary = summary.ifBlank { body },
                         interest = interest ?: "",
                         isFotoscapes = true,
                         fotoscapesUid = j.optString("uid"),
                         fotoscapesLbtype = j.optString("lbtype"),
-                        fotoscapesSourceLink = j.optString("sourceLink")
+                        fotoscapesSourceLink = j.optString("sourceLink"),
+                        fotoscapesTitleEn = title,
+                        fotoscapesSummaryEn = summary,
+                        fotoscapesBodyEn = body,
+                        fotoscapesPreviewLinks = previews,
+                        fotoscapesLink = link
                     )
                 }.also { articles ->
                     Log.d(TAG, "Response count (mapped): ${articles.size}")
@@ -132,11 +139,13 @@ private fun localizedText(obj: JSONObject, key: String): String {
     }
 }
 
-private fun previewLink(obj: JSONObject): String {
-    val previews = obj.optJSONArray("previews") ?: return ""
-    return when (val first = previews.opt(0)) {
-        is JSONObject -> first.optString("link")
-        is String -> first
-        else -> ""
+private fun previewLinks(obj: JSONObject): List<String> {
+    val previews = obj.optJSONArray("previews") ?: return emptyList()
+    return (0 until previews.length()).mapNotNull { index ->
+        when (val item = previews.opt(index)) {
+            is JSONObject -> item.optString("link")
+            is String -> item
+            else -> null
+        }.takeIf { it.isNotBlank() }
     }
 }

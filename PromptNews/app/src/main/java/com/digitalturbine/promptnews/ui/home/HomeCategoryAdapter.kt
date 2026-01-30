@@ -6,6 +6,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.material3.MaterialTheme
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
@@ -14,7 +17,11 @@ import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.digitalturbine.promptnews.R
 import com.digitalturbine.promptnews.data.Article
+import com.digitalturbine.promptnews.data.isFotoscapesStory
 import com.digitalturbine.promptnews.data.logoUrlForTheme
+import com.digitalturbine.promptnews.ui.components.FotoscapesArticleCard
+import com.digitalturbine.promptnews.ui.fotoscapes.FotoscapesArticleUi
+import com.digitalturbine.promptnews.ui.fotoscapes.toFotoscapesUi
 import com.google.android.material.button.MaterialButton
 
 class HomeCategoryAdapter(
@@ -28,6 +35,7 @@ class HomeCategoryAdapter(
             is HomeFeedItem.SectionHeader -> VIEW_TYPE_SECTION_HEADER
             is HomeFeedItem.SmallCard -> VIEW_TYPE_SMALL_CARD
             is HomeFeedItem.FeedCard -> VIEW_TYPE_FEED_CARD
+            is HomeFeedItem.FotoscapesArticle -> VIEW_TYPE_FOTOSCAPES_ARTICLE
             is HomeFeedItem.TrendingPulse -> VIEW_TYPE_TRENDING_PULSE
             is HomeFeedItem.CtaButton -> VIEW_TYPE_CTA
         }
@@ -52,6 +60,10 @@ class HomeCategoryAdapter(
                 val view = inflater.inflate(R.layout.item_home_feed_card, parent, false)
                 FeedCardViewHolder(view, onArticleClick)
             }
+            VIEW_TYPE_FOTOSCAPES_ARTICLE -> {
+                val view = inflater.inflate(R.layout.item_home_fotoscapes_article, parent, false)
+                FotoscapesArticleViewHolder(view)
+            }
             VIEW_TYPE_TRENDING_PULSE -> {
                 val view = inflater.inflate(R.layout.item_trending_pulse, parent, false)
                 TrendingPulseViewHolder(view, onArticleClick)
@@ -70,6 +82,7 @@ class HomeCategoryAdapter(
             is HomeFeedItem.SectionHeader -> (holder as SectionHeaderViewHolder).bind(item)
             is HomeFeedItem.SmallCard -> (holder as SmallCardViewHolder).bind(item.article)
             is HomeFeedItem.FeedCard -> (holder as FeedCardViewHolder).bind(item.article)
+            is HomeFeedItem.FotoscapesArticle -> (holder as FotoscapesArticleViewHolder).bind(item.article)
             is HomeFeedItem.TrendingPulse -> (holder as TrendingPulseViewHolder).bind(item)
             is HomeFeedItem.CtaButton -> (holder as CtaViewHolder).bind(item)
         }
@@ -190,6 +203,9 @@ class HomeCategoryAdapter(
         private val ctaButton: MaterialButton = itemView.findViewById(R.id.home_feed_cta)
 
         fun bind(article: Article) {
+            if (article.isFotoscapesStory()) {
+                article.toFotoscapesUi()
+            }
             titleView.text = article.title
             metaView.text = article.summary?.takeIf { it.isNotBlank() } ?: article.ageLabel.orEmpty()
             metaView.isVisible = metaView.text.isNotBlank()
@@ -223,6 +239,28 @@ class HomeCategoryAdapter(
             ctaButton.isVisible = article.url.isNotBlank()
             ctaButton.setOnClickListener { onClick(article) }
             itemView.setOnClickListener { onClick(article) }
+        }
+    }
+
+    private class FotoscapesArticleViewHolder(
+        itemView: View
+    ) : RecyclerView.ViewHolder(itemView) {
+        private val composeView: ComposeView = itemView.findViewById(R.id.home_fotoscapes_compose)
+
+        init {
+            composeView.setViewCompositionStrategy(
+                ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
+            )
+        }
+
+        fun bind(article: Article) {
+            val ui = article.toFotoscapesUi()
+            if (ui !is FotoscapesArticleUi) return
+            composeView.setContent {
+                MaterialTheme {
+                    FotoscapesArticleCard(ui)
+                }
+            }
         }
     }
 
@@ -275,8 +313,9 @@ class HomeCategoryAdapter(
         private const val VIEW_TYPE_SECTION_HEADER = 1
         private const val VIEW_TYPE_SMALL_CARD = 2
         private const val VIEW_TYPE_FEED_CARD = 3
-        private const val VIEW_TYPE_TRENDING_PULSE = 4
-        private const val VIEW_TYPE_CTA = 5
+        private const val VIEW_TYPE_FOTOSCAPES_ARTICLE = 4
+        private const val VIEW_TYPE_TRENDING_PULSE = 5
+        private const val VIEW_TYPE_CTA = 6
 
         private fun isDarkMode(view: View): Boolean {
             val uiMode = view.context.resources.configuration.uiMode
@@ -295,7 +334,12 @@ private object HomeFeedDiff : DiffUtil.ItemCallback<HomeFeedItem>() {
             oldItem is HomeFeedItem.SmallCard && newItem is HomeFeedItem.SmallCard ->
                 oldItem.article.url == newItem.article.url
             oldItem is HomeFeedItem.FeedCard && newItem is HomeFeedItem.FeedCard ->
-                oldItem.article.url == newItem.article.url
+                oldItem.article.url.ifBlank { oldItem.article.fotoscapesUid.ifBlank { oldItem.article.title } } ==
+                    newItem.article.url.ifBlank { newItem.article.fotoscapesUid.ifBlank { newItem.article.title } }
+            oldItem is HomeFeedItem.FotoscapesArticle && newItem is HomeFeedItem.FotoscapesArticle ->
+                oldItem.article.fotoscapesUid.ifBlank { oldItem.article.title } ==
+                    newItem.article.fotoscapesUid.ifBlank { newItem.article.title } &&
+                    oldItem.article.fotoscapesLbtype == newItem.article.fotoscapesLbtype
             oldItem is HomeFeedItem.TrendingPulse && newItem is HomeFeedItem.TrendingPulse ->
                 oldItem.article.url == newItem.article.url && oldItem.rank == newItem.rank
             oldItem is HomeFeedItem.CtaButton && newItem is HomeFeedItem.CtaButton ->
