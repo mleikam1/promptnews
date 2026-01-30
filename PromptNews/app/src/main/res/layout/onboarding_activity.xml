@@ -10,7 +10,7 @@
         android:id="@+id/onboardingToolbar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:title="Choose your interests"
+        android:title="@string/onboarding_interest_title"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
@@ -35,20 +35,57 @@
             android:paddingTop="16dp"
             android:paddingBottom="16dp">
 
-            <TextView
-                android:id="@+id/onboardingDescription"
+            <LinearLayout
+                android:id="@+id/locationPromptContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Pick at least 3 topics to personalize your Following feed."
-                android:textAppearance="?attr/textAppearanceBodyLarge" />
+                android:orientation="vertical">
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/interestsList"
+                <TextView
+                    android:id="@+id/locationTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/onboarding_location_title"
+                    android:textAppearance="?attr/textAppearanceHeadlineSmall" />
+
+                <TextView
+                    android:id="@+id/locationDescription"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/onboarding_location_description"
+                    android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/enableLocationButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:text="@string/onboarding_location_enable" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/interestsContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:clipToPadding="false"
-                android:nestedScrollingEnabled="false" />
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/onboardingDescription"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/onboarding_interest_description"
+                    android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/interestsList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:clipToPadding="false"
+                    android:nestedScrollingEnabled="false" />
+            </LinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
@@ -61,6 +98,7 @@
         android:paddingEnd="20dp"
         android:paddingTop="12dp"
         android:paddingBottom="16dp"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">

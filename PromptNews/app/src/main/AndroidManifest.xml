@@ -19,6 +19,9 @@
             android:name=".web.ArticleWebViewActivity"
             android:exported="false" />
         <activity
+            android:name=".ui.fotoscapes.FotoscapesArticleActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.onboarding.OnboardingActivity"
             android:exported="false" />
 

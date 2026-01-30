@@ -7,16 +7,6 @@ import android.util.Log
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.compose.ui.unit.dp
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -29,6 +19,11 @@ import com.digitalturbine.promptnews.data.HomeCategoryRepository
 import com.digitalturbine.promptnews.data.isFotoscapesStory
 import com.digitalturbine.promptnews.data.fotoscapes.FotoscapesArticle
 import com.digitalturbine.promptnews.util.HomePrefs
+import com.digitalturbine.promptnews.data.UserInterestRepositoryImpl
+import com.digitalturbine.promptnews.ui.fotoscapes.FotoscapesArticleActivity
+import com.digitalturbine.promptnews.ui.fotoscapes.FotoscapesArticleUi
+import com.digitalturbine.promptnews.ui.fotoscapes.toFotoscapesArticleUi
+import com.digitalturbine.promptnews.ui.fotoscapes.toFotoscapesUi
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
@@ -38,19 +33,17 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
     private val homeCategoryRepository = HomeCategoryRepository()
     private val feedAdapter = HomeCategoryAdapter(
         onArticleClick = ::openArticle,
+        onFotoscapesClick = ::openFotoscapesArticle,
         onCtaClick = ::openLocalMore
     )
     private var prefsListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     private lateinit var feedView: RecyclerView
-    private lateinit var debugView: ComposeView
     private lateinit var loadingView: ProgressBar
     private lateinit var errorView: TextView
 
     private var isLoading: Boolean = false
     private var hasLoaded: Boolean = false
-    private var fotoscapesItems: List<FotoscapesArticle> = emptyList()
-
     private lateinit var category: HomeCategory
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,16 +59,11 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         feedView = view.findViewById(R.id.home_category_feed)
-        debugView = view.findViewById(R.id.home_category_debug)
         loadingView = view.findViewById(R.id.home_category_loading)
         errorView = view.findViewById(R.id.home_category_error)
 
         feedView.layoutManager = LinearLayoutManager(requireContext())
         feedView.adapter = feedAdapter
-        debugView.setViewCompositionStrategy(
-            ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
-        )
-
         loadFeed()
     }
 
@@ -107,7 +95,7 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
     }
 
     fun refreshOnTabSelected() {
-        if (category.type == HomeCategoryType.INTEREST && !isLoading) {
+        if (category.type == HomeCategoryType.INTEREST && !isLoading && !hasLoaded) {
             loadFeed()
         }
     }
@@ -125,17 +113,20 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
                 emptyList()
             }
             val feed = if (category.type == HomeCategoryType.INTEREST) {
-                homeCategoryRepository.loadFotoscapesInterest(category)
+                val selectedIds = UserInterestRepositoryImpl.getInstance(requireContext())
+                    .getSelectedInterests()
+                    .map { it.id }
+                    .toSet()
+                if (selectedIds.contains(category.id)) {
+                    homeCategoryRepository.loadFotoscapesInterest(category)
+                } else {
+                    emptyList()
+                }
             } else {
                 emptyList()
             }
 
             if (!isAdded) return@launch
-
-            if (category.type == HomeCategoryType.INTEREST) {
-                fotoscapesItems = feed
-                Log.e("FS_TRACE", "STATE SET size=${fotoscapesItems.size}")
-            }
 
             if (category.type == HomeCategoryType.INTEREST) {
                 val first = feed.firstOrNull()
@@ -146,16 +137,6 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
                 )
             }
 
-            if (category.type == HomeCategoryType.INTEREST) {
-                debugView.setContent {
-                    FotoscapesDebugList(items = fotoscapesItems)
-                }
-                isLoading = false
-                hasLoaded = true
-                showDebugContent()
-                return@launch
-            }
-
             val items = buildItems(
                 local = local,
                 feed = feed,
@@ -164,16 +145,12 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
 
             isLoading = false
             hasLoaded = true
-            when {
-                isLoading -> showLoading()
-                hasLoaded && items.isEmpty() -> {
-                    feedAdapter.submitList(emptyList())
-                    showEmptyState(emptyMessage(locationLabel))
-                }
-                else -> {
-                    feedAdapter.submitList(items)
-                    showContent()
-                }
+            if (items.isEmpty()) {
+                feedAdapter.submitList(emptyList())
+                showEmptyState(emptyMessage(locationLabel))
+            } else {
+                feedAdapter.submitList(items)
+                showContent()
             }
         }
     }
@@ -186,10 +163,11 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
         val items = mutableListOf<HomeFeedItem>()
 
         if (category.type == HomeCategoryType.HOME) {
-            items.add(HomeFeedItem.SectionHeader(localHeader(locationLabel)))
-            if (local.isNotEmpty()) {
-                items.addAll(local.take(LOCAL_COUNT).map { HomeFeedItem.SmallCard(it) })
+            if (local.isEmpty()) {
+                return emptyList()
             }
+            items.add(HomeFeedItem.SectionHeader(localHeader(locationLabel)))
+            items.addAll(local.take(LOCAL_COUNT).map { HomeFeedItem.SmallCard(it) })
             items.add(HomeFeedItem.CtaButton(getString(R.string.home_local_more)))
         } else {
             if (feed.isNotEmpty()) {
@@ -216,7 +194,6 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
         loadingView.isVisible = true
         errorView.isVisible = false
         feedView.isVisible = false
-        debugView.isVisible = false
     }
 
     private fun showEmptyState(message: String) {
@@ -224,19 +201,10 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
         errorView.isVisible = true
         loadingView.isVisible = false
         feedView.isVisible = false
-        debugView.isVisible = false
     }
 
     private fun showContent() {
         feedView.isVisible = true
-        loadingView.isVisible = false
-        errorView.isVisible = false
-        debugView.isVisible = false
-    }
-
-    private fun showDebugContent() {
-        debugView.isVisible = true
-        feedView.isVisible = false
         loadingView.isVisible = false
         errorView.isVisible = false
     }
@@ -254,20 +222,30 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
     }
 
     private fun openArticle(article: Article) {
-        if (article.isFotoscapesStory()) {
-            val link = article.fotoscapesLink.ifBlank { article.fotoscapesSourceLink }
-            Log.d(
-                "Fotoscapes",
-                "Click uid=${article.fotoscapesUid} lbtype=${article.fotoscapesLbtype} " +
-                    "link=$link sourceLink=${article.fotoscapesSourceLink}"
-            )
+        val isFotoscapesArticle = article.fotoscapesLbtype.equals("article", ignoreCase = true)
+        if (isFotoscapesArticle) {
+            val ui = article.toFotoscapesUi()
+            if (ui is FotoscapesArticleUi) {
+                FotoscapesArticleActivity.start(requireContext(), ui)
+            }
+            return
         }
-        if (article.fotoscapesLbtype.equals("article", ignoreCase = true)) return
         val url = if (article.isFotoscapesStory()) {
-            article.fotoscapesLink.ifBlank { article.fotoscapesSourceLink }
+            article.fotoscapesLink
         } else {
             article.url
         }
+        if (url.isBlank()) return
+        openWebView(url)
+    }
+
+    private fun openFotoscapesArticle(article: FotoscapesArticle) {
+        if (article.lbType.equals("article", ignoreCase = true)) {
+            val ui = article.toFotoscapesArticleUi()
+            FotoscapesArticleActivity.start(requireContext(), ui)
+            return
+        }
+        val url = article.articleUrl
         if (url.isBlank()) return
         openWebView(url)
     }
@@ -310,26 +288,6 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
                     ARG_ENDPOINT to category.endpoint
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun FotoscapesDebugList(items: List<FotoscapesArticle>) {
-    LaunchedEffect(items) {
-        Log.e("FS_TRACE", "UI RECEIVED size=${items.size}")
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text("DEBUG Fotoscapes count = ${items.size}")
-        items.forEach { item ->
-            Text(
-                text = "• ${item.title}",
-                modifier = Modifier.padding(8.dp)
-            )
         }
     }
 }

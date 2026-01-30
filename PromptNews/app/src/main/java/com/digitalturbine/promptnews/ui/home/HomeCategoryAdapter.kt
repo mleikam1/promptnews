@@ -27,6 +27,7 @@ import com.google.android.material.button.MaterialButton
 
 class HomeCategoryAdapter(
     private val onArticleClick: (Article) -> Unit,
+    private val onFotoscapesClick: (FotoscapesArticle) -> Unit,
     private val onCtaClick: () -> Unit
 ) : ListAdapter<HomeFeedItem, RecyclerView.ViewHolder>(HomeFeedDiff) {
 
@@ -63,7 +64,7 @@ class HomeCategoryAdapter(
             }
             VIEW_TYPE_FOTOSCAPES_ARTICLE -> {
                 val view = inflater.inflate(R.layout.item_home_fotoscapes_article, parent, false)
-                FotoscapesArticleViewHolder(view)
+                FotoscapesArticleViewHolder(view, onFotoscapesClick)
             }
             VIEW_TYPE_TRENDING_PULSE -> {
                 val view = inflater.inflate(R.layout.item_trending_pulse, parent, false)
@@ -244,7 +245,8 @@ class HomeCategoryAdapter(
     }
 
     private class FotoscapesArticleViewHolder(
-        itemView: View
+        itemView: View,
+        private val onClick: (FotoscapesArticle) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
         private val composeView: ComposeView = itemView.findViewById(R.id.home_fotoscapes_compose)
 
@@ -261,6 +263,7 @@ class HomeCategoryAdapter(
                     FotoscapesArticleCard(ui)
                 }
             }
+            itemView.setOnClickListener { onClick(article) }
         }
     }
 
