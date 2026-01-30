@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.ElevatedCard
@@ -111,10 +112,16 @@ fun HeroCard(article: Article, onClick: () -> Unit) {
 }
 
 @Composable
-fun FotoscapesArticleCard(article: FotoscapesArticleUi) {
+fun FotoscapesArticleCard(article: FotoscapesArticleUi, onClick: (() -> Unit)? = null) {
     val scrollState = rememberScrollState()
+    val clickModifier = if (onClick != null) {
+        Modifier.clickable(onClick = onClick)
+    } else {
+        Modifier
+    }
     Column(
         modifier = Modifier
+            .then(clickModifier)
             .fillMaxWidth()
             .verticalScroll(scrollState)
             .padding(16.dp)

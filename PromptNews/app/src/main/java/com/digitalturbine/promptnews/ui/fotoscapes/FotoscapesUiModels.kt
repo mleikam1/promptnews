@@ -45,7 +45,7 @@ fun Article.toFotoscapesUi(): FotoscapesUi {
             lbtype = lbtypeValue,
             title = titleEn,
             imageUrl = fotoscapesPreviewLinks.firstOrNull()?.ifBlank { null } ?: imageUrl.ifBlank { null },
-            link = fotoscapesLink.ifBlank { fotoscapesSourceLink }
+            link = fotoscapesLink
         )
     }
 }

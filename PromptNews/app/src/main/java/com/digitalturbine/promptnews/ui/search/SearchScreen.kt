@@ -1,7 +1,6 @@
 package com.digitalturbine.promptnews.ui.search
 
 import android.content.Intent
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -49,6 +48,7 @@ import com.digitalturbine.promptnews.ui.components.RowCard
 import com.digitalturbine.promptnews.ui.fotoscapes.FotoscapesArticleUi
 import com.digitalturbine.promptnews.ui.fotoscapes.FotoscapesExternalUi
 import com.digitalturbine.promptnews.ui.fotoscapes.toFotoscapesUi
+import com.digitalturbine.promptnews.ui.fotoscapes.FotoscapesArticleActivity
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -91,18 +91,20 @@ fun SearchScreen(
 
     var text by remember { mutableStateOf("") }
     var lastQuery by remember { mutableStateOf("") }
+    fun openFotoscapesArticle(ui: FotoscapesArticleUi) {
+        FotoscapesArticleActivity.start(ctx, ui)
+    }
+
     fun openArticle(article: Article) {
-        if (article.isFotoscapesStory()) {
-            val link = article.fotoscapesLink.ifBlank { article.fotoscapesSourceLink }
-            Log.d(
-                "Fotoscapes",
-                "Click uid=${article.fotoscapesUid} lbtype=${article.fotoscapesLbtype} " +
-                    "link=$link sourceLink=${article.fotoscapesSourceLink}"
-            )
+        if (article.fotoscapesLbtype.equals("article", ignoreCase = true)) {
+            val ui = article.toFotoscapesUi()
+            if (ui is FotoscapesArticleUi) {
+                openFotoscapesArticle(ui)
+            }
+            return
         }
-        if (article.fotoscapesLbtype.equals("article", ignoreCase = true)) return
         val url = if (article.isFotoscapesStory()) {
-            article.fotoscapesLink.ifBlank { article.fotoscapesSourceLink }
+            article.fotoscapesLink
         } else {
             article.url
         }
@@ -241,7 +243,7 @@ fun SearchScreen(
                                 if (hero.fotoscapesLbtype.equals("article", ignoreCase = true)) {
                                     val ui = remember(hero) { hero.toFotoscapesUi() }
                                     if (ui is FotoscapesArticleUi) {
-                                        FotoscapesArticleCard(ui)
+                                        FotoscapesArticleCard(ui, onClick = { openFotoscapesArticle(ui) })
                                     }
                                 } else if (hero.isFotoscapesStory()) {
                                     val ui = remember(hero) { hero.toFotoscapesUi() }
@@ -259,7 +261,7 @@ fun SearchScreen(
                             if (a.fotoscapesLbtype.equals("article", ignoreCase = true)) {
                                 val ui = remember(a) { a.toFotoscapesUi() }
                                 if (ui is FotoscapesArticleUi) {
-                                    FotoscapesArticleCard(ui)
+                                    FotoscapesArticleCard(ui, onClick = { openFotoscapesArticle(ui) })
                                 }
                             } else if (a.isFotoscapesStory()) {
                                 val ui = remember(a) { a.toFotoscapesUi() }

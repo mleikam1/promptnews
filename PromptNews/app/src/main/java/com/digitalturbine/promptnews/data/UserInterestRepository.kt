@@ -3,8 +3,8 @@ package com.digitalturbine.promptnews.data
 import android.content.Context
 
 interface UserInterestRepository {
-    fun getSelectedInterests(): List<Interest>
-    fun saveSelectedInterests(interests: List<Interest>)
+    fun getSelectedInterests(): Set<Interest>
+    fun saveSelectedInterests(interests: Set<Interest>)
     fun isOnboardingComplete(): Boolean
 }
 
@@ -29,13 +29,14 @@ class UserInterestRepositoryImpl private constructor(
 
     private val prefs = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
-    override fun getSelectedInterests(): List<Interest> {
+    override fun getSelectedInterests(): Set<Interest> {
         val ids = prefs.getStringSet(KEY_SELECTED, emptySet()).orEmpty()
-        if (ids.isEmpty()) return emptyList()
+        if (ids.isEmpty()) return emptySet()
         return InterestCatalog.interests.filter { ids.contains(it.id) }
+            .toCollection(LinkedHashSet())
     }
 
-    override fun saveSelectedInterests(interests: List<Interest>) {
+    override fun saveSelectedInterests(interests: Set<Interest>) {
         val ids = interests.map { it.id }.toSet()
         prefs.edit()
             .putStringSet(KEY_SELECTED, ids)

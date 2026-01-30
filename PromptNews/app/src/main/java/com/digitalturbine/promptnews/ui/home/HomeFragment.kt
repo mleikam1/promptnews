@@ -10,6 +10,7 @@ import androidx.viewpager2.widget.ViewPager2
 import com.digitalturbine.promptnews.R
 import com.digitalturbine.promptnews.data.Interest
 import com.digitalturbine.promptnews.data.UserInterestRepositoryImpl
+import com.digitalturbine.promptnews.util.HomePrefs
 
 class HomeFragment : Fragment(R.layout.fragment_home) {
     private lateinit var chipsView: androidx.recyclerview.widget.RecyclerView
@@ -55,9 +56,12 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         })
     }
 
-    private fun buildCategories(interests: List<Interest>): List<HomeCategory> {
+    private fun buildCategories(interests: Set<Interest>): List<HomeCategory> {
         val categories = mutableListOf<HomeCategory>()
-        categories.add(HomeCategory.home())
+        val userLocation = HomePrefs.getUserLocation(requireContext())
+        if (userLocation != null) {
+            categories.add(HomeCategory.home())
+        }
         interests.forEach { interest ->
             categories.add(HomeCategory.interest(interest))
         }

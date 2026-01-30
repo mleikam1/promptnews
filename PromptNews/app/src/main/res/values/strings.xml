@@ -17,4 +17,9 @@
     <string name="home_top_story_badge">Top Story</string>
     <string name="home_hero_meta">%1$s \u2022 %2$s</string>
     <string name="home_latest_stories">Latest Stories</string>
+    <string name="onboarding_location_title">Enable location</string>
+    <string name="onboarding_location_description">We use your location to show local headlines and community stories near you.</string>
+    <string name="onboarding_location_enable">Allow location</string>
+    <string name="onboarding_interest_title">Choose your interests</string>
+    <string name="onboarding_interest_description">Pick at least 3 topics to personalize your Following feed.</string>
 </resources>
