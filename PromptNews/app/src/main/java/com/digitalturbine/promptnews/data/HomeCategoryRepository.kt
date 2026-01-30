@@ -44,11 +44,9 @@ class HomeCategoryRepository(
         val interestKey = interest.toFotoscapesKey()
         Log.e("FS_TRACE", "FETCH START interest=$interestKey")
         Log.d("Fotoscapes", "Fetching interest=$interestKey")
-        val schedule = fotoscapesScheduleForInterest(interest)
         val results = fotoscapesRepository.fetchInterestFeed(
-            interestKey = interestKey,
-            limit = FEED_COUNT,
-            schedule = schedule
+            interest = interest,
+            limit = FEED_COUNT
         )
         Log.e("FS_TRACE", "FETCH END count=${results.size}")
         Log.d("Fotoscapes", "Returned count=${results.size}")
@@ -57,16 +55,5 @@ class HomeCategoryRepository(
 
     companion object {
         private const val FEED_COUNT = 10
-    }
-
-    private fun fotoscapesScheduleForInterest(interest: Interest): String {
-        return when (interest.id) {
-            "business" -> "business"
-            "entertainment" -> "entertainment"
-            "food-drink" -> "fooddrink"
-            "health" -> "health"
-            "celebrities", "celebrity-homes" -> "celebrity"
-            else -> "general"
-        }
     }
 }
