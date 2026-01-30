@@ -18,6 +18,20 @@ fun Interest.toFotoscapesKey(): String {
     }
 }
 
+fun Interest.toFotoscapesSched(): String {
+    return when (id) {
+        "business" -> "business"
+        "celebrities", "celebrity-homes" -> "celebrity"
+        "entertainment" -> "entertainment"
+        "games" -> "games"
+        "food-drink" -> "fooddrink"
+        "health" -> "health"
+        "international-news" -> "world"
+        "home" -> "lifestyle"
+        else -> "topnews"
+    }
+}
+
 data class InterestRoute(
     val id: String,
     val displayName: String,

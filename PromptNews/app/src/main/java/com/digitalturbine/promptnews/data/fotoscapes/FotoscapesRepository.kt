@@ -5,6 +5,7 @@ import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.FotoscapesEndpoints
 import com.digitalturbine.promptnews.data.Interest
 import com.digitalturbine.promptnews.data.toFotoscapesKey
+import com.digitalturbine.promptnews.data.toFotoscapesSched
 import com.digitalturbine.promptnews.data.net.Http
 import com.digitalturbine.promptnews.util.TimeLabelFormatter
 import kotlinx.coroutines.Dispatchers
@@ -26,24 +27,26 @@ class FotoscapesRepository {
 
     private suspend fun fetchInterest(interest: Interest): List<Article> = withContext(Dispatchers.IO) {
         fetchInterestFeed(
-            interestKey = interest.toFotoscapesKey(),
-            limit = DEFAULT_LIMIT,
-            schedule = DEFAULT_SCHEDULE
+            interest = interest,
+            limit = DEFAULT_LIMIT
         )
     }
 
     suspend fun fetchInterestFeed(
-        interestKey: String,
-        limit: Int,
-        schedule: String
+        interest: Interest,
+        limit: Int
     ): List<Article> = withContext(Dispatchers.IO) {
+        val sched = interest.toFotoscapesSched()
+        Log.e("FS_TRACE", "USING sched=$sched")
+        val interestKey = interest.toFotoscapesKey()
         val items = fetchContent(
             category = interestKey,
             interest = interestKey,
             limit = limit,
-            schedule = schedule,
+            schedule = sched,
             geo = null
         )
+        Log.e("FS_TRACE", "RESPONSE size=${items.size}")
         Log.d(TAG, "Interest=$interestKey rawCount=${items.size}")
         items
     }
@@ -119,7 +122,6 @@ class FotoscapesRepository {
 
     companion object {
         private const val TAG = "Fotoscapes"
-        private const val DEFAULT_SCHEDULE = "promptnews"
         private const val DEFAULT_LIMIT = 10
     }
 }
