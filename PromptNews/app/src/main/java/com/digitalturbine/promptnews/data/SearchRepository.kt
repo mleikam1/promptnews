@@ -60,7 +60,7 @@ private fun previewLinks(obj: JSONObject): List<String> {
             is JSONObject -> item.optString("link")
             is String -> item
             else -> null
-        }.takeIf { it.isNotBlank() }
+        }?.takeIf { it.isNotBlank() }
     }
 }
 
@@ -94,7 +94,9 @@ class SearchRepository {
     // FotoScapes (first-party)
     suspend fun fetchFotoScapes(query: String, limit: Int = 3): List<Article> =
         withContext(Dispatchers.IO) {
-            val route = fotoscapesEndpointForQuery(query) ?: return@withContext emptyList()
+            val safeQuery = query.trim()
+            if (safeQuery.isEmpty()) return@withContext emptyList()
+            val route = fotoscapesEndpointForQuery(safeQuery) ?: return@withContext emptyList()
             Http.client.newCall(Http.req(route.endpoint)).execute().use { resp ->
                 if (!resp.isSuccessful) return@withContext emptyList()
                 val body = resp.body?.string().orEmpty()
@@ -111,10 +113,11 @@ class SearchRepository {
                             val title = localizedText(j, "title")
                             val summary = localizedText(j, "summary")
                             val body = localizedText(j, "body")
-                            val link = j.optString("link")
+                            val link = j.optString("link").ifBlank { j.optString("sourceLink") }
                             val previews = previewLinks(j)
                             val img = previews.firstOrNull().orEmpty()
                             val age = TimeLabelFormatter.formatTimeLabel(j.optString("publishOn"))
+                            val owner = j.optString("owner").orEmpty()
 
                             Article(
                                 title = title,
@@ -122,9 +125,9 @@ class SearchRepository {
                                 imageUrl = if (img.isBlank()) "" else tryUpscaleCdn(img),
                                 logoUrl = j.optString("brandLogo"),
                                 logoUrlDark = j.optString("brandLogoDark"),
-                                sourceName = j.optString("owner").ifBlank { null },
+                                sourceName = owner.ifBlank { null },
                                 ageLabel = age,
-                                summary = summary.ifBlank { body }.ifBlank { null },
+                                summary = summary.ifBlank { body }.ifBlank { "" },
                                 interest = inferInterest(title),
                                 isFotoscapes = true,
                                 fotoscapesUid = j.optString("uid"),
@@ -169,8 +172,9 @@ class SearchRepository {
     ): List<Article> =
         withContext(Dispatchers.IO) {
             if (Config.serpApiKey.isBlank()) return@withContext emptyList<Article>()
-
-            fetchSerpNewsDtos(query, page, pageSize, location, useRawImageUrls).mapNotNull { dto ->
+            val safeQuery = query.trim()
+            if (safeQuery.isEmpty()) return@withContext emptyList<Article>()
+            fetchSerpNewsDtos(safeQuery, page, pageSize, location, useRawImageUrls).mapNotNull { dto ->
                 val unifiedStory = serpApiMapper.toUnifiedStory(dto)
                 unifiedStory.toArticle(
                     ageLabel = dto.ageLabel,
@@ -188,8 +192,9 @@ class SearchRepository {
     ): List<Article> =
         withContext(Dispatchers.IO) {
             if (Config.serpApiKey.isBlank()) return@withContext emptyList<Article>()
-
-            fetchSerpNewsDtosByOffset(query, limit, offset, location, useRawImageUrls).mapNotNull { dto ->
+            val safeQuery = query.trim()
+            if (safeQuery.isEmpty()) return@withContext emptyList<Article>()
+            fetchSerpNewsDtosByOffset(safeQuery, limit, offset, location, useRawImageUrls).mapNotNull { dto ->
                 val unifiedStory = serpApiMapper.toUnifiedStory(dto)
                 unifiedStory.toArticle(
                     ageLabel = dto.ageLabel,
@@ -207,7 +212,9 @@ class SearchRepository {
     ): List<UnifiedStory> =
         withContext(Dispatchers.IO) {
             if (Config.serpApiKey.isBlank()) return@withContext emptyList<UnifiedStory>()
-            fetchSerpNewsDtos(query, page, pageSize, location, useRawImageUrls)
+            val safeQuery = query.trim()
+            if (safeQuery.isEmpty()) return@withContext emptyList<UnifiedStory>()
+            fetchSerpNewsDtos(safeQuery, page, pageSize, location, useRawImageUrls)
                 .map { dto -> serpApiMapper.toUnifiedStory(dto) }
         }
 
@@ -348,12 +355,14 @@ class SearchRepository {
 
     // Clips (YouTube first, SerpAPI fallback)
     suspend fun fetchClips(query: String): List<Clip> = withContext(Dispatchers.IO) {
+        val safeQuery = query.trim()
+        if (safeQuery.isEmpty()) return@withContext emptyList()
         // YouTube Data API
         if (Config.youtubeApiKey.isNotBlank()) {
             val u = Uri.parse("https://www.googleapis.com/youtube/v3/search").buildUpon()
                 .appendQueryParameter("part", "snippet")
                 .appendQueryParameter("maxResults", "18")
-                .appendQueryParameter("q", query)
+                .appendQueryParameter("q", safeQuery)
                 .appendQueryParameter("type", "video")
                 .appendQueryParameter("videoDuration", "short")
                 .appendQueryParameter("key", Config.youtubeApiKey)
@@ -404,7 +413,7 @@ class SearchRepository {
 
         val shorts = runCatching {
             Http.client.newCall(
-                Http.req(serpUri(mapOf("engine" to "google_videos", "q" to "site:youtube.com/shorts $query")))
+                Http.req(serpUri(mapOf("engine" to "google_videos", "q" to "site:youtube.com/shorts $safeQuery")))
             ).execute().use { if (it.isSuccessful) parse(it.body?.string().orEmpty()) else emptyList() }
         }.getOrElse { err ->
             Log.w(TAG, "SerpAPI clips request failed for shorts", err)
@@ -413,7 +422,7 @@ class SearchRepository {
 
         val general = runCatching {
             Http.client.newCall(
-                Http.req(serpUri(mapOf("engine" to "google_videos", "q" to query)))
+                Http.req(serpUri(mapOf("engine" to "google_videos", "q" to safeQuery)))
             ).execute().use { if (it.isSuccessful) parse(it.body?.string().orEmpty()) else emptyList() }
         }.getOrElse { err ->
             Log.w(TAG, "SerpAPI clips request failed for general", err)
@@ -426,7 +435,9 @@ class SearchRepository {
     // Images (SerpAPI)
     suspend fun fetchImages(query: String): List<String> = withContext(Dispatchers.IO) {
         if (Config.serpApiKey.isBlank()) return@withContext emptyList<String>()
-        val reqUrl = serpUri(mapOf("engine" to "google_images", "q" to query, "ijn" to "0"))
+        val safeQuery = query.trim()
+        if (safeQuery.isEmpty()) return@withContext emptyList()
+        val reqUrl = serpUri(mapOf("engine" to "google_images", "q" to safeQuery, "ijn" to "0"))
         val out = mutableListOf<String>()
         runCatching {
             Http.client.newCall(Http.req(reqUrl)).execute().use { r ->
@@ -454,7 +465,9 @@ class SearchRepository {
     // People Also Ask + Related (SerpAPI)
     suspend fun fetchExtras(query: String): Extras = withContext(Dispatchers.IO) {
         if (Config.serpApiKey.isBlank()) return@withContext Extras()
-        val reqUrl = serpUri(mapOf("engine" to "google", "q" to query))
+        val safeQuery = query.trim()
+        if (safeQuery.isEmpty()) return@withContext Extras()
+        val reqUrl = serpUri(mapOf("engine" to "google", "q" to safeQuery))
         var people: List<String> = emptyList()
         var related: List<String> = emptyList()
 
