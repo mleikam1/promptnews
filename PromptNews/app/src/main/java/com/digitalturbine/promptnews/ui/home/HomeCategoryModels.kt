@@ -2,6 +2,7 @@ package com.digitalturbine.promptnews.ui.home
 
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.Interest
+import com.digitalturbine.promptnews.data.fotoscapes.FotoscapesArticle
 
 enum class HomeCategoryType {
     HOME,
@@ -36,7 +37,7 @@ sealed class HomeFeedItem {
     data class SectionHeader(val title: String) : HomeFeedItem()
     data class SmallCard(val article: Article) : HomeFeedItem()
     data class FeedCard(val article: Article) : HomeFeedItem()
-    data class FotoscapesArticle(val article: Article) : HomeFeedItem()
+    data class FotoscapesArticle(val article: FotoscapesArticle) : HomeFeedItem()
     data class TrendingPulse(val rank: Int, val article: Article, val indicator: TrendIndicator) : HomeFeedItem()
     data class CtaButton(val label: String) : HomeFeedItem()
 }

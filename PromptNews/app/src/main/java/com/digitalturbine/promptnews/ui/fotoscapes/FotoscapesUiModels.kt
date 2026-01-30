@@ -2,6 +2,7 @@ package com.digitalturbine.promptnews.ui.fotoscapes
 
 import android.util.Log
 import com.digitalturbine.promptnews.data.Article
+import com.digitalturbine.promptnews.data.fotoscapes.FotoscapesArticle
 
 sealed interface FotoscapesUi {
     val uid: String
@@ -47,4 +48,16 @@ fun Article.toFotoscapesUi(): FotoscapesUi {
             link = fotoscapesLink.ifBlank { fotoscapesSourceLink }
         )
     }
+}
+
+fun FotoscapesArticle.toFotoscapesArticleUi(): FotoscapesArticleUi {
+    Log.d("Fotoscapes", "Render uid=$id lbtype=$lbType title=$title")
+    val bodyText = summary.ifBlank { body }
+    return FotoscapesArticleUi(
+        uid = id,
+        lbtype = lbType,
+        title = title,
+        body = bodyText,
+        imageUrl = imageUrl
+    )
 }

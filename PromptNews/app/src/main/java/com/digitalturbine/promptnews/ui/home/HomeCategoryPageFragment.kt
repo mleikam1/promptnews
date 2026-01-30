@@ -27,6 +27,7 @@ import com.digitalturbine.promptnews.R
 import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.HomeCategoryRepository
 import com.digitalturbine.promptnews.data.isFotoscapesStory
+import com.digitalturbine.promptnews.data.fotoscapes.FotoscapesArticle
 import com.digitalturbine.promptnews.util.HomePrefs
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import kotlinx.coroutines.launch
@@ -48,7 +49,7 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
 
     private var isLoading: Boolean = false
     private var hasLoaded: Boolean = false
-    private var fotoscapesItems: List<Article> = emptyList()
+    private var fotoscapesItems: List<FotoscapesArticle> = emptyList()
 
     private lateinit var category: HomeCategory
 
@@ -141,7 +142,7 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
                 Log.d("Fotoscapes", "HomeScreen list size=${feed.size}")
                 Log.d(
                     "Fotoscapes",
-                    "HomeScreen first item lbtype=${first?.fotoscapesLbtype} uid=${first?.fotoscapesUid}"
+                    "HomeScreen first item lbtype=${first?.lbType} uid=${first?.id}"
                 )
             }
 
@@ -179,7 +180,7 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
 
     private fun buildItems(
         local: List<Article>,
-        feed: List<Article>,
+        feed: List<FotoscapesArticle>,
         locationLabel: String
     ): List<HomeFeedItem> {
         val items = mutableListOf<HomeFeedItem>()
@@ -196,11 +197,7 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
             }
             items.addAll(
                 feed.take(FEED_COUNT).map { article ->
-                    if (article.fotoscapesLbtype.equals("article", ignoreCase = true)) {
-                        HomeFeedItem.FotoscapesArticle(article)
-                    } else {
-                        HomeFeedItem.FeedCard(article)
-                    }
+                    HomeFeedItem.FotoscapesArticle(article)
                 }
             )
         }
@@ -318,7 +315,7 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
 }
 
 @Composable
-private fun FotoscapesDebugList(items: List<Article>) {
+private fun FotoscapesDebugList(items: List<FotoscapesArticle>) {
     LaunchedEffect(items) {
         Log.e("FS_TRACE", "UI RECEIVED size=${items.size}")
     }
