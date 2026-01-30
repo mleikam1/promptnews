@@ -130,16 +130,11 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
                 locationLabel = locationLabel
             )
 
-            val isEmpty = when (category.type) {
-                HomeCategoryType.HOME -> local.isEmpty()
-                HomeCategoryType.INTEREST -> feed.isEmpty()
-            }
-
             isLoading = false
             hasLoaded = true
             when {
                 isLoading -> showLoading()
-                isEmpty && hasLoaded -> {
+                hasLoaded && items.isEmpty() -> {
                     feedAdapter.submitList(emptyList())
                     showEmptyState(emptyMessage(locationLabel))
                 }
@@ -167,16 +162,16 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
         } else {
             if (feed.isNotEmpty()) {
                 items.add(HomeFeedItem.SectionHeader(getString(R.string.home_latest_stories)))
-                items.addAll(
-                    feed.take(FEED_COUNT).map { article ->
-                        if (article.fotoscapesLbtype.equals("article", ignoreCase = true)) {
-                            HomeFeedItem.FotoscapesArticle(article)
-                        } else {
-                            HomeFeedItem.FeedCard(article)
-                        }
-                    }
-                )
             }
+            items.addAll(
+                feed.take(FEED_COUNT).map { article ->
+                    if (article.fotoscapesLbtype.equals("article", ignoreCase = true)) {
+                        HomeFeedItem.FotoscapesArticle(article)
+                    } else {
+                        HomeFeedItem.FeedCard(article)
+                    }
+                }
+            )
         }
         return items
     }
@@ -222,15 +217,21 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
 
     private fun openArticle(article: Article) {
         if (article.isFotoscapesStory()) {
+            val link = article.fotoscapesLink.ifBlank { article.fotoscapesSourceLink }
             Log.d(
                 "Fotoscapes",
                 "Click uid=${article.fotoscapesUid} lbtype=${article.fotoscapesLbtype} " +
-                    "link=${article.url} sourceLink=${article.fotoscapesSourceLink}"
+                    "link=$link sourceLink=${article.fotoscapesSourceLink}"
             )
         }
         if (article.fotoscapesLbtype.equals("article", ignoreCase = true)) return
-        if (article.url.isBlank()) return
-        openWebView(article.url)
+        val url = if (article.isFotoscapesStory()) {
+            article.fotoscapesLink.ifBlank { article.fotoscapesSourceLink }
+        } else {
+            article.url
+        }
+        if (url.isBlank()) return
+        openWebView(url)
     }
 
     private fun openWebView(url: String) {
