@@ -36,6 +36,7 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
     private lateinit var errorView: TextView
 
     private var isLoading: Boolean = false
+    private var hasLoaded: Boolean = false
 
     private lateinit var category: HomeCategory
 
@@ -66,7 +67,11 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
         if (category.type == HomeCategoryType.HOME) {
             val prefs = HomePrefs.getPrefs(requireContext())
             val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-                if (key == HomePrefs.KEY_LOCATION) {
+                if (
+                    key == HomePrefs.KEY_LOCATION ||
+                    key == HomePrefs.KEY_LOCATION_CITY ||
+                    key == HomePrefs.KEY_LOCATION_STATE
+                ) {
                     loadFeed()
                 }
             }
@@ -92,16 +97,27 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
 
     private fun loadFeed() {
         isLoading = true
+        hasLoaded = false
         showLoading()
         viewLifecycleOwner.lifecycleScope.launch {
+            val userLocation = HomePrefs.getUserLocation(requireContext())
             val locationLabel = HomePrefs.getLocation(requireContext())
-            val content = homeCategoryRepository.fetchCategory(category, locationLabel)
+            val local = if (category.type == HomeCategoryType.HOME) {
+                homeCategoryRepository.loadLocalNews(userLocation)
+            } else {
+                emptyList()
+            }
+            val feed = if (category.type == HomeCategoryType.INTEREST) {
+                homeCategoryRepository.loadFotoscapesInterest(category)
+            } else {
+                emptyList()
+            }
 
             if (!isAdded) return@launch
 
             if (category.type == HomeCategoryType.INTEREST) {
-                val first = content.feed.firstOrNull()
-                Log.d("Fotoscapes", "HomeScreen list size=${content.feed.size}")
+                val first = feed.firstOrNull()
+                Log.d("Fotoscapes", "HomeScreen list size=${feed.size}")
                 Log.d(
                     "Fotoscapes",
                     "HomeScreen first item lbtype=${first?.fotoscapesLbtype} uid=${first?.fotoscapesUid}"
@@ -109,20 +125,21 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
             }
 
             val items = buildItems(
-                local = content.local,
-                feed = content.feed,
+                local = local,
+                feed = feed,
                 locationLabel = locationLabel
             )
 
             val isEmpty = when (category.type) {
-                HomeCategoryType.HOME -> content.local.isEmpty()
-                HomeCategoryType.INTEREST -> content.feed.isEmpty()
+                HomeCategoryType.HOME -> local.isEmpty()
+                HomeCategoryType.INTEREST -> feed.isEmpty()
             }
 
             isLoading = false
+            hasLoaded = true
             when {
                 isLoading -> showLoading()
-                isEmpty -> {
+                isEmpty && hasLoaded -> {
                     feedAdapter.submitList(emptyList())
                     showEmptyState(emptyMessage(locationLabel))
                 }
