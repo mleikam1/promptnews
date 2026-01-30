@@ -42,12 +42,13 @@ class HomeCategoryRepository(
         } ?: return emptyList()
 
         val interestKey = interest.toFotoscapesKey()
+        Log.d("Fotoscapes", "Fetching interest=$interestKey")
         val results = fotoscapesRepository.fetchInterestFeed(
             interestKey = interestKey,
             limit = FEED_COUNT,
             schedule = FOTOSCAPES_SCHEDULE
         )
-        Log.d("Fotoscapes", "Interest=$interestKey count=${results.size}")
+        Log.d("Fotoscapes", "Returned count=${results.size}")
         return results
     }
 

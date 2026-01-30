@@ -93,15 +93,21 @@ fun SearchScreen(
     var lastQuery by remember { mutableStateOf("") }
     fun openArticle(article: Article) {
         if (article.isFotoscapesStory()) {
+            val link = article.fotoscapesLink.ifBlank { article.fotoscapesSourceLink }
             Log.d(
                 "Fotoscapes",
                 "Click uid=${article.fotoscapesUid} lbtype=${article.fotoscapesLbtype} " +
-                    "link=${article.url} sourceLink=${article.fotoscapesSourceLink}"
+                    "link=$link sourceLink=${article.fotoscapesSourceLink}"
             )
         }
         if (article.fotoscapesLbtype.equals("article", ignoreCase = true)) return
-        if (article.url.isBlank()) return
-        ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", article.url))
+        val url = if (article.isFotoscapesStory()) {
+            article.fotoscapesLink.ifBlank { article.fotoscapesSourceLink }
+        } else {
+            article.url
+        }
+        if (url.isBlank()) return
+        ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", url))
     }
 
     fun openArticle(url: String) {
