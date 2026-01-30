@@ -175,7 +175,7 @@ class HomeCategoryPageFragment : Fragment(R.layout.fragment_home_category_page) 
             }
             items.addAll(
                 feed.take(FEED_COUNT).map { article ->
-                    HomeFeedItem.FotoscapesArticle(article)
+                    HomeFeedItem.Fotoscapes(article)
                 }
             )
         }

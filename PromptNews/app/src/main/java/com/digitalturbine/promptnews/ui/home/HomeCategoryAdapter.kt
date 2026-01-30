@@ -37,7 +37,7 @@ class HomeCategoryAdapter(
             is HomeFeedItem.SectionHeader -> VIEW_TYPE_SECTION_HEADER
             is HomeFeedItem.SmallCard -> VIEW_TYPE_SMALL_CARD
             is HomeFeedItem.FeedCard -> VIEW_TYPE_FEED_CARD
-            is HomeFeedItem.FotoscapesArticle -> VIEW_TYPE_FOTOSCAPES_ARTICLE
+            is HomeFeedItem.Fotoscapes -> VIEW_TYPE_FOTOSCAPES_ARTICLE
             is HomeFeedItem.TrendingPulse -> VIEW_TYPE_TRENDING_PULSE
             is HomeFeedItem.CtaButton -> VIEW_TYPE_CTA
         }
@@ -84,7 +84,7 @@ class HomeCategoryAdapter(
             is HomeFeedItem.SectionHeader -> (holder as SectionHeaderViewHolder).bind(item)
             is HomeFeedItem.SmallCard -> (holder as SmallCardViewHolder).bind(item.article)
             is HomeFeedItem.FeedCard -> (holder as FeedCardViewHolder).bind(item.article)
-            is HomeFeedItem.FotoscapesArticle -> (holder as FotoscapesArticleViewHolder).bind(item.article)
+            is HomeFeedItem.Fotoscapes -> (holder as FotoscapesArticleViewHolder).bind(item.article)
             is HomeFeedItem.TrendingPulse -> (holder as TrendingPulseViewHolder).bind(item)
             is HomeFeedItem.CtaButton -> (holder as CtaViewHolder).bind(item)
         }
@@ -339,7 +339,7 @@ private object HomeFeedDiff : DiffUtil.ItemCallback<HomeFeedItem>() {
             oldItem is HomeFeedItem.FeedCard && newItem is HomeFeedItem.FeedCard ->
                 oldItem.article.url.ifBlank { oldItem.article.fotoscapesUid.ifBlank { oldItem.article.title } } ==
                     newItem.article.url.ifBlank { newItem.article.fotoscapesUid.ifBlank { newItem.article.title } }
-            oldItem is HomeFeedItem.FotoscapesArticle && newItem is HomeFeedItem.FotoscapesArticle ->
+            oldItem is HomeFeedItem.Fotoscapes && newItem is HomeFeedItem.Fotoscapes ->
                 oldItem.article.id.ifBlank { oldItem.article.title } ==
                     newItem.article.id.ifBlank { newItem.article.title } &&
                     oldItem.article.lbType == newItem.article.lbType
