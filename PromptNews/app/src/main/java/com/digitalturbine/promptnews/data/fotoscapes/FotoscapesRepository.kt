@@ -80,10 +80,11 @@ class FotoscapesRepository {
                     val title = localizedText(j, "title")
                     val summary = localizedText(j, "summary")
                     val body = localizedText(j, "body")
-                    val link = j.optString("link")
+                    val link = j.optString("link").ifBlank { j.optString("sourceLink") }
                     val previews = previewLinks(j)
                     val img = previews.firstOrNull().orEmpty()
                     val age = TimeLabelFormatter.formatTimeLabel(j.optString("publishOn"))
+                    val owner = j.optString("owner").orEmpty()
 
                     Article(
                         title = title,
@@ -91,10 +92,10 @@ class FotoscapesRepository {
                         imageUrl = if (img.isBlank()) "" else tryUpscaleCdn(img),
                         logoUrl = j.optString("brandLogo"),
                         logoUrlDark = j.optString("brandLogoDark"),
-                        sourceName = j.optString("owner").ifBlank { null },
+                        sourceName = owner.ifBlank { null },
                         ageLabel = age,
-                        summary = summary.ifBlank { body },
-                        interest = interest ?: "",
+                        summary = summary.ifBlank { body }.ifBlank { "" },
+                        interest = interest.orEmpty(),
                         isFotoscapes = true,
                         fotoscapesUid = j.optString("uid"),
                         fotoscapesLbtype = j.optString("lbtype"),
@@ -146,6 +147,6 @@ private fun previewLinks(obj: JSONObject): List<String> {
             is JSONObject -> item.optString("link")
             is String -> item
             else -> null
-        }.takeIf { it.isNotBlank() }
+        }?.takeIf { it.isNotBlank() }
     }
 }
