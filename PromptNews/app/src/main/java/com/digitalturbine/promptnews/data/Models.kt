@@ -9,7 +9,6 @@ data class Article(
     val sourceName: String? = null,
     val ageLabel: String? = null,
     val summary: String? = null,
-    val interest: String = "news",
     val isFotoscapes: Boolean = false,
     val fotoscapesUid: String = "",
     val fotoscapesLbtype: String = "",

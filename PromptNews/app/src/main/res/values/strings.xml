@@ -6,15 +6,13 @@
     <string name="home_top_empty">No top stories available right now.</string>
     <string name="home_local_empty">No local stories available right now.</string>
     <string name="home_local_requires_location">Enable location access to see local headlines.</string>
-    <string name="home_interest_empty">No stories available for this interest right now.</string>
     <string name="home_error">Unable to load headlines.</string>
     <string name="home_trending_now">Trending Now</string>
     <string name="home_trending_pulse">Trending Pulse</string>
     <string name="home_local_near_city">Top news near %1$s</string>
     <string name="home_local_near_you">Top news near you</string>
     <string name="home_local_more">More local news</string>
-    <string name="home_location_required">Enable location to see local news and weather</string>
-    <string name="home_top_local_stories">Top local stories</string>
+    <string name="home_location_required">Location permission required to show local news and weather</string>
     <string name="home_no_local_stories">No local stories available.</string>
     <string name="home_more_local_news">More local news</string>
     <string name="home_loading_more">Loading more</string>
@@ -24,9 +22,4 @@
     <string name="home_top_story_badge">Top Story</string>
     <string name="home_hero_meta">%1$s \u2022 %2$s</string>
     <string name="home_latest_stories">Latest Stories</string>
-    <string name="onboarding_location_title">Enable location</string>
-    <string name="onboarding_location_description">We use your location to show local headlines and community stories near you.</string>
-    <string name="onboarding_location_enable">Allow location</string>
-    <string name="onboarding_interest_title">Choose your interests</string>
-    <string name="onboarding_interest_description">Pick at least 3 topics to personalize your Following feed.</string>
 </resources>

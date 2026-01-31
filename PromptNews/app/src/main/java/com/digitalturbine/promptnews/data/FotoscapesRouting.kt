@@ -2,13 +2,13 @@ package com.digitalturbine.promptnews.data
 
 private fun n(s: String) = s.trim().lowercase()
 
-enum class RouteType { INTEREST, PUBLISHER }
+enum class RouteType { TOPIC, PUBLISHER }
 
 data class FotoscapesRoute(val endpoint: String, val type: RouteType)
 
 private data class Rule(val keys: List<String>, val endpoint: String)
 
-private val interestRules = listOf(
+private val topicRules = listOf(
     Rule(listOf(n("news"), n("top news"), n("general news")),
         FotoscapesEndpoints.dailyEndpoint("dynamic-news")),
     Rule(listOf(n("technology"), n("tech")),
@@ -35,10 +35,10 @@ fun fotoscapesEndpointForQuery(query: String): FotoscapesRoute? {
         return FotoscapesRoute(it.value, RouteType.PUBLISHER)
     }
 
-    // interests
-    interestRules.forEach { r ->
+    // topics
+    topicRules.forEach { r ->
         if (r.keys.any { q.contains(it) }) {
-            return FotoscapesRoute(r.endpoint, RouteType.INTEREST)
+            return FotoscapesRoute(r.endpoint, RouteType.TOPIC)
         }
     }
     return null

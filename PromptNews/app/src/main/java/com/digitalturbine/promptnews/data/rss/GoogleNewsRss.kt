@@ -20,7 +20,7 @@ import javax.xml.parsers.DocumentBuilderFactory
  *  - sourceName (from <source>)
  *  - ageLabel (relative time if today, else "Popular")
  *  - logoUrl = "" (leave for your UI to map if desired)
- *  - interest = "news", isFotoscapes = false
+ *  - isFotoscapes = false
  */
 class GoogleNewsRss(private val http: OkHttpClient) {
 
@@ -58,7 +58,6 @@ class GoogleNewsRss(private val http: OkHttpClient) {
                     logoUrl = "",
                     sourceName = source?.stripTags(),
                     ageLabel = age,
-                    interest = "news",
                     isFotoscapes = false
                 )
 

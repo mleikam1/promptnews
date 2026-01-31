@@ -15,7 +15,6 @@ object FotoscapesEndpoints {
 
     fun contentEndpoint(
         category: String,
-        interest: String?,
         limit: Int,
         schedule: String,
         geo: String?
@@ -25,9 +24,6 @@ object FotoscapesEndpoints {
         .appendQueryParameter("limit", limit.toString())
         .appendQueryParameter("sched", schedule)
         .apply {
-            if (!interest.isNullOrBlank()) {
-                appendQueryParameter("interest", interest)
-            }
             if (!geo.isNullOrBlank()) {
                 appendQueryParameter("geo", geo)
             }

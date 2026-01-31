@@ -8,7 +8,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.padding
@@ -46,7 +45,6 @@ import com.digitalturbine.promptnews.util.HomePrefs
 import com.digitalturbine.promptnews.data.UserLocation
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
-import com.digitalturbine.promptnews.data.UserInterestRepositoryImpl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -55,11 +53,23 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.coroutines.resume
-import com.digitalturbine.promptnews.ui.onboarding.OnboardingActivity
 
 class MainActivity : FragmentActivity() {
     private val historyRepository by lazy { HistoryRepository.getInstance(applicationContext) }
-    private val locationPermissionLauncher = registerForActivityResult(
+    private val fineLocationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        HomePrefs.setLocationPrompted(this, true)
+        if (granted) {
+            resolveAndStoreLocation()
+        } else if (hasCoarseLocation()) {
+            resolveAndStoreLocation()
+        } else {
+            coarseLocationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+    }
+
+    private val coarseLocationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         HomePrefs.setLocationPrompted(this, true)
@@ -72,16 +82,10 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val interestRepo = UserInterestRepositoryImpl.getInstance(this)
-        if (!interestRepo.isOnboardingComplete()) {
-            startActivity(Intent(this, OnboardingActivity::class.java))
-            finish()
-            return
-        }
         lifecycleScope.launch {
             historyRepository.pruneOldEntries()
         }
-        maybeRequestLocation()
+        requestLocationOnLaunch()
         setContent {
             MaterialTheme {
                 val navController = rememberNavController()
@@ -91,7 +95,7 @@ class MainActivity : FragmentActivity() {
                 // The crash happens when navigate() calls findStartDestination() while the graph
                 // is still empty. Track readiness so we never navigate until nodes exist.
                 LaunchedEffect(navController) {
-                    Log.d("Nav", "startDestination=${Dest.Home.route}")
+                    Log.d("Nav", "startDestination=${Dest.Search.route}")
                     snapshotFlow { navController.graph }
                         .map { graph -> graph.nodes.size() > 0 }
                         .distinctUntilChanged()
@@ -133,7 +137,7 @@ class MainActivity : FragmentActivity() {
                 ) { pad ->
                     NavHost(
                         navController = navController,
-                        startDestination = Dest.Home.route,
+                        startDestination = Dest.Search.route,
                         modifier = Modifier.padding(pad)
                     ) {
                         composable(
@@ -228,19 +232,25 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    private fun maybeRequestLocation() {
-        if (!HomePrefs.wasLocationPrompted(this)) {
-            if (hasCoarseLocation()) {
-                HomePrefs.setLocationPrompted(this, true)
-                resolveAndStoreLocation()
-            } else {
-                locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-            }
+    private fun requestLocationOnLaunch() {
+        if (hasLocationPermission()) {
+            resolveAndStoreLocation()
             return
         }
-        if (hasCoarseLocation() && HomePrefs.getUserLocation(this) == null) {
-            resolveAndStoreLocation()
+        if (!HomePrefs.wasLocationPrompted(this)) {
+            fineLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
+    }
+
+    private fun hasLocationPermission(): Boolean {
+        return hasFineLocation() || hasCoarseLocation()
+    }
+
+    private fun hasFineLocation(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
     private fun hasCoarseLocation(): Boolean {
@@ -252,9 +262,9 @@ class MainActivity : FragmentActivity() {
 
     private fun resolveAndStoreLocation() {
         val locationManager = getSystemService(LocationManager::class.java) ?: return
-        if (!hasCoarseLocation()) return
+        if (!hasLocationPermission()) return
         lifecycleScope.launch {
-            val location = getCoarseLocation(locationManager)
+            val location = getBestLocation(locationManager)
             if (location != null) {
                 val userLocation = withContext(Dispatchers.IO) { reverseGeocode(location) }
                 if (userLocation != null) {
@@ -264,13 +274,13 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    private suspend fun getCoarseLocation(locationManager: LocationManager): Location? {
+    private suspend fun getBestLocation(locationManager: LocationManager): Location? {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             return suspendCancellableCoroutine { cont ->
-                val provider = if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                    LocationManager.NETWORK_PROVIDER
-                } else {
+                val provider = if (hasFineLocation() && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                     LocationManager.GPS_PROVIDER
+                } else {
+                    LocationManager.NETWORK_PROVIDER
                 }
                 locationManager.getCurrentLocation(provider, null, mainExecutor) { loc ->
                     cont.resume(loc)

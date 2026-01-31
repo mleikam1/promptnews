@@ -12,7 +12,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.Locale
 
 // -----------------------------------------------------------------------------
 // helpers
@@ -61,21 +60,6 @@ private fun previewLinks(obj: JSONObject): List<String> {
             is String -> item
             else -> null
         }?.takeIf { it.isNotBlank() }
-    }
-}
-
-private fun inferInterest(title: String): String {
-    val t = title.lowercase(Locale.US)
-    fun has(r: String) = Regex(r).containsMatchIn(t)
-    return when {
-        has("\\b(nfl|nba|mlb|nhl|premier|match|score|game)\\b") -> "sports"
-        has("\\b(ai|app|android|ios|google|apple|microsoft|chip|gpu|openai)\\b") -> "technology"
-        has("\\b(stock|market|earnings|ipo|revenue|merger|inflation)\\b") -> "business"
-        has("\\b(election|congress|parliament|white house|supreme)\\b") -> "politics"
-        has("\\b(study|nasa|space|physics|biology)\\b") -> "science"
-        has("\\b(health|covid|vaccine|flu)\\b") -> "health"
-        has("\\b(movie|film|music|celebrity|netflix|series)\\b") -> "entertainment"
-        else -> "news"
     }
 }
 
@@ -128,7 +112,6 @@ class SearchRepository {
                                 sourceName = owner.ifBlank { null },
                                 ageLabel = age,
                                 summary = summary.ifBlank { body }.ifBlank { "" },
-                                interest = inferInterest(title),
                                 isFotoscapes = true,
                                 fotoscapesUid = j.optString("uid"),
                                 fotoscapesLbtype = j.optString("lbtype"),
@@ -176,10 +159,7 @@ class SearchRepository {
             if (safeQuery.isEmpty()) return@withContext emptyList<Article>()
             fetchSerpNewsDtos(safeQuery, page, pageSize, location, useRawImageUrls).mapNotNull { dto ->
                 val unifiedStory = serpApiMapper.toUnifiedStory(dto)
-                unifiedStory.toArticle(
-                    ageLabel = dto.ageLabel,
-                    interest = inferInterest(dto.title)
-                )
+                unifiedStory.toArticle(ageLabel = dto.ageLabel)
             }
         }
 
@@ -196,10 +176,7 @@ class SearchRepository {
             if (safeQuery.isEmpty()) return@withContext emptyList<Article>()
             fetchSerpNewsDtosByOffset(safeQuery, limit, offset, location, useRawImageUrls).mapNotNull { dto ->
                 val unifiedStory = serpApiMapper.toUnifiedStory(dto)
-                unifiedStory.toArticle(
-                    ageLabel = dto.ageLabel,
-                    interest = inferInterest(dto.title)
-                )
+                unifiedStory.toArticle(ageLabel = dto.ageLabel)
             }
         }
 
@@ -340,7 +317,7 @@ class SearchRepository {
         return out
     }
 
-    private fun UnifiedStory.toArticle(ageLabel: String?, interest: String): Article {
+    private fun UnifiedStory.toArticle(ageLabel: String?): Article {
         return Article(
             title = title,
             url = url,
@@ -348,7 +325,6 @@ class SearchRepository {
             logoUrl = publisher?.iconUrl.orEmpty(),
             sourceName = publisher?.name,
             ageLabel = ageLabel,
-            interest = interest,
             isFotoscapes = false
         )
     }

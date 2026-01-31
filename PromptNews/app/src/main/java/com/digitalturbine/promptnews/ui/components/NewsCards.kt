@@ -94,19 +94,6 @@ fun HeroCard(article: Article, onClick: () -> Unit) {
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(10.dp)
-                    .background(Color(0xFF2563EB), RoundedCornerShape(10.dp))
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    article.interest.replaceFirstChar { it.uppercase() },
-                    color = Color.White,
-                    fontWeight = FontWeight.ExtraBold
-                )
-            }
         }
     }
 }
@@ -221,19 +208,6 @@ fun RowCard(a: Article, onClick: () -> Unit) {
                     .size(width = 118.dp, height = 84.dp)
                     .clip(RoundedCornerShape(12.dp))
             )
-            Spacer(Modifier.height(6.dp))
-            Box(
-                modifier = Modifier
-                    .background(Color(0xFF2563EB), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    a.interest.replaceFirstChar { it.uppercase() },
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            }
         }
     }
 }

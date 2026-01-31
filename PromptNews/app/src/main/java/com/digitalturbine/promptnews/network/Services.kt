@@ -8,7 +8,6 @@ import com.digitalturbine.promptnews.data.net.Http     // <-- fixed import
 import com.digitalturbine.promptnews.data.rss.parseGoogleNewsRss
 import com.digitalturbine.promptnews.util.TimeLabelFormatter
 import com.digitalturbine.promptnews.util.faviconFrom
-import com.digitalturbine.promptnews.util.inferInterestFromTitle
 import com.digitalturbine.promptnews.util.toEpochMillisCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -66,7 +65,6 @@ object Services {
                         logoUrl = faviconFrom(it.link).orEmpty(),
                         sourceName = it.source.ifBlank { null },
                         ageLabel = age,
-                        interest = inferInterestFromTitle(it.title),
                         isFotoscapes = false
                     )
                     if (out.size >= limit) break
