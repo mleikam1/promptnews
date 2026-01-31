@@ -40,6 +40,7 @@ import com.digitalturbine.promptnews.data.SearchUi
 import com.digitalturbine.promptnews.data.isFotoscapesStory
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.util.isNflIntent
+import com.digitalturbine.promptnews.util.InterestTracker
 import com.digitalturbine.promptnews.ui.components.HeroCard
 import com.digitalturbine.promptnews.ui.components.FotoscapesArticleCard
 import com.digitalturbine.promptnews.ui.components.RowCard
@@ -83,15 +84,27 @@ fun SearchScreen(
     val ui by vm.ui.collectAsState()
     val ctx = LocalContext.current
     val historyRepository = remember(ctx) { HistoryRepository.getInstance(ctx) }
+    val interestTracker = remember(ctx) { InterestTracker.getInstance(ctx) }
     val scope = rememberCoroutineScope()
 
     var text by remember { mutableStateOf("") }
     var lastQuery by remember { mutableStateOf("") }
+
+    fun recordInterest(query: String?) {
+        interestTracker.recordInteraction(query)
+    }
+
+    fun recordResultClick() {
+        recordInterest(lastQuery)
+    }
+
     fun openFotoscapesArticle(ui: FotoscapesArticleUi) {
+        recordResultClick()
         FotoscapesArticleActivity.start(ctx, ui)
     }
 
     fun openArticle(article: Article) {
+        recordResultClick()
         if (article.fotoscapesLbtype.equals("article", ignoreCase = true)) {
             val ui = article.toFotoscapesUi()
             if (ui is FotoscapesArticleUi) {
@@ -109,6 +122,7 @@ fun SearchScreen(
     }
 
     fun openArticle(url: String) {
+        recordResultClick()
         if (url.isBlank()) return
         ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", url))
     }
@@ -126,11 +140,13 @@ fun SearchScreen(
     fun runSearchFromInput(q: String) {
         val trimmed = q.trim()
         if (trimmed.isBlank()) return
+        recordInterest(trimmed)
         onSearchRequested(trimmed)
     }
     fun runChipSearch(q: String) {
         val trimmed = q.trim()
         if (trimmed.isBlank()) return
+        recordInterest(trimmed)
         onSearchRequested(trimmed)
     }
 
@@ -161,6 +177,13 @@ fun SearchScreen(
         searchBarContentPadding
     } else {
         12.dp
+    }
+    val suggestedPrompts = remember(ui, screenState) {
+        if (screenState == SearchScreenState.Prompt && ui is SearchUi.Idle) {
+            interestTracker.getSuggestedPrompts()
+        } else {
+            emptyList()
+        }
     }
     Column(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -196,6 +219,29 @@ fun SearchScreen(
                                 maxItemsInEachRow = 3
                             ) {
                                 DEFAULT_TRENDING_PROMPTS.forEach { prompt ->
+                                    TrendingPill(
+                                        text = prompt,
+                                        onClick = { runChipSearch(prompt) }
+                                    )
+                                }
+                            }
+                        }
+                        if (suggestedPrompts.isNotEmpty()) {
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                text = "Suggested for You",
+                                style = MaterialTheme.typography.titleMedium,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                maxItemsInEachRow = 3
+                            ) {
+                                suggestedPrompts.forEach { prompt ->
                                     TrendingPill(
                                         text = prompt,
                                         onClick = { runChipSearch(prompt) }
