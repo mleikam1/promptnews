@@ -7,7 +7,6 @@ data class Story(
     val logoUrl: String,
     val sourceName: String? = null,
     val ageLabel: String? = null,
-    val interest: String = "news",
     val isFotoscapes: Boolean = false
 )
 
@@ -18,7 +17,6 @@ fun Article.toStory(): Story = Story(
     logoUrl = logoUrl,
     sourceName = sourceName,
     ageLabel = ageLabel,
-    interest = interest,
     isFotoscapes = isFotoscapes
 )
 
@@ -29,6 +27,5 @@ fun Story.toArticle(): Article = Article(
     logoUrl = logoUrl,
     sourceName = sourceName,
     ageLabel = ageLabel,
-    interest = interest,
     isFotoscapes = isFotoscapes
 )
