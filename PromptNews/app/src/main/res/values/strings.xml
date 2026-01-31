@@ -13,6 +13,13 @@
     <string name="home_local_near_city">Top news near %1$s</string>
     <string name="home_local_near_you">Top news near you</string>
     <string name="home_local_more">More local news</string>
+    <string name="home_location_required">Enable location to see local news and weather</string>
+    <string name="home_top_local_stories">Top local stories</string>
+    <string name="home_no_local_stories">No local stories available.</string>
+    <string name="home_more_local_news">More local news</string>
+    <string name="home_loading_more">Loading more</string>
+    <string name="home_local_weather">Local Weather</string>
+    <string name="home_weather_unavailable">Weather unavailable.</string>
     <string name="home_read_more">Read More</string>
     <string name="home_top_story_badge">Top Story</string>
     <string name="home_hero_meta">%1$s \u2022 %2$s</string>
