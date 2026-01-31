@@ -41,7 +41,9 @@ class ArticleWebViewActivity : ComponentActivity() {
 
         setContent {
             var progress by remember { mutableFloatStateOf(0f) }
-            var errorMessage by remember { mutableStateOf<String?>(null) }
+            var isLoading by remember { mutableStateOf(true) }
+            var hasError by remember { mutableStateOf(false) }
+            var hasContent by remember { mutableStateOf(false) }
             Scaffold(
                 topBar = {
                     CenterAlignedTopAppBar(
@@ -58,9 +60,11 @@ class ArticleWebViewActivity : ComponentActivity() {
                 }
             ) { pad ->
                 Column(Modifier.padding(pad)) {
-                    if (progress in 0f..0.99f) LinearProgressIndicator(progress = progress)
-                    errorMessage?.let { msg ->
-                        Text(text = msg)
+                    if (isLoading && progress in 0f..0.99f) {
+                        LinearProgressIndicator(progress = progress)
+                    }
+                    if (hasError && !isLoading && !hasContent) {
+                        Text(text = "Unable to load this page.")
                     }
                     AndroidView(factory = { ctx ->
                         WebView(ctx).apply {
@@ -82,7 +86,13 @@ class ArticleWebViewActivity : ComponentActivity() {
                                 ) {
                                     val description = error?.description?.toString().orEmpty()
                                     Log.w(TAG, "WebView error for ${request?.url}: $description")
-                                    errorMessage = "Unable to load this page."
+                                    val isMainFrame = request?.isForMainFrame == true
+                                    val errorCode = error?.errorCode
+                                    val isTransientError = errorCode == ERROR_HOST_LOOKUP ||
+                                        errorCode == ERROR_TIMEOUT
+                                    if (isMainFrame && !isTransientError) {
+                                        hasError = true
+                                    }
                                 }
 
                                 override fun onReceivedHttpError(
@@ -94,12 +104,26 @@ class ArticleWebViewActivity : ComponentActivity() {
                                         TAG,
                                         "WebView HTTP ${errorResponse?.statusCode} for ${request?.url}"
                                     )
-                                    errorMessage = "Unable to load this page."
+                                    if (request?.isForMainFrame == true) {
+                                        hasError = true
+                                    }
+                                }
+
+                                override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                                    isLoading = true
+                                    progress = 0f
+                                    hasError = false
+                                    hasContent = false
                                 }
 
                                 override fun onPageCommitVisible(view: WebView?, url: String?) {
                                     progress = 1f
-                                    errorMessage = null
+                                    hasContent = true
+                                    hasError = false
+                                }
+
+                                override fun onPageFinished(view: WebView?, url: String?) {
+                                    isLoading = false
                                 }
                             }
                             Log.d(TAG, "loadUrl($initialUrl)")
