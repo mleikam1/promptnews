@@ -130,7 +130,7 @@ fun SearchScreen(
         val trimmed = q.trim()
         if (trimmed.isBlank()) return
         text = trimmed
-        vm.runSearch(trimmed)
+        vm.runSearch(trimmed, screenName = "Prompt")
         if (recordHistory) {
             scope.launch {
                 historyRepository.addEntry(trimmed)
@@ -269,6 +269,17 @@ fun SearchScreen(
 
                 when (val s = ui) {
                     is SearchUi.Ready -> {
+                        if (s.hero == null && s.rows.isEmpty()) {
+                            item {
+                                Text(
+                                    text = "No results found. Try another search.",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(Modifier.height(16.dp))
+                            }
+                        }
                         if (isNflIntent(s.query)) {
                             item {
                                 NflWidgetPlaceholder()
@@ -449,7 +460,18 @@ fun SearchScreen(
                     is SearchUi.Error -> {
                         item { Text("Error: ${s.message}") }
                     }
-                    is SearchUi.Idle -> Unit
+                    is SearchUi.Idle -> {
+                        if (screenState == SearchScreenState.Results) {
+                            item {
+                                Text(
+                                    text = "Search to see results.",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
                     is SearchUi.Searching -> Unit
                 }
             }
