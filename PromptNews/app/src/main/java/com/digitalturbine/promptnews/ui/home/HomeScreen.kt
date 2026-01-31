@@ -1,25 +1,22 @@
 package com.digitalturbine.promptnews.ui.home
 
+import android.Manifest
 import android.content.Intent
 import android.content.SharedPreferences
+import android.location.Geocoder
+import android.location.LocationManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -31,6 +28,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,19 +36,66 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.digitalturbine.promptnews.R
+import com.digitalturbine.promptnews.data.UserLocation
 import com.digitalturbine.promptnews.ui.components.HeroCard
 import com.digitalturbine.promptnews.ui.components.RowCard
 import com.digitalturbine.promptnews.util.HomePrefs
 import com.digitalturbine.promptnews.web.ArticleWebViewActivity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.Locale
 
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var userLocation by remember { mutableStateOf(HomePrefs.getUserLocation(context)) }
     val localNewsState by viewModel.localNewsState.collectAsState()
-    val weatherState by viewModel.weatherState.collectAsState()
+    var permissionDenied by remember { mutableStateOf(false) }
+
+    fun fetchLocationAndNews() {
+        scope.launch {
+            val resolvedLocation = resolveUserLocation(context) ?: HomePrefs.getUserLocation(context)
+            if (resolvedLocation != null) {
+                HomePrefs.setUserLocation(context, resolvedLocation)
+                userLocation = resolvedLocation
+                viewModel.fetchLocalNews(resolvedLocation.city, resolvedLocation.state)
+            }
+        }
+    }
+
+    val coarseLocationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        HomePrefs.setLocationPrompted(context, true)
+        if (granted) {
+            permissionDenied = false
+            fetchLocationAndNews()
+        } else {
+            permissionDenied = true
+            HomePrefs.setUserLocation(context, null)
+            userLocation = null
+            viewModel.clearLocalNews()
+        }
+    }
+
+    val fineLocationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        HomePrefs.setLocationPrompted(context, true)
+        if (granted || hasCoarseLocation(context)) {
+            permissionDenied = false
+            fetchLocationAndNews()
+        } else {
+            coarseLocationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+    }
 
     DisposableEffect(context) {
         val prefs = HomePrefs.getPrefs(context)
@@ -68,8 +113,19 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
-    LaunchedEffect(userLocation) {
-        viewModel.loadForLocation(userLocation)
+    LaunchedEffect(Unit) {
+        when {
+            hasLocationPermission(context) -> {
+                permissionDenied = false
+                fetchLocationAndNews()
+            }
+            !HomePrefs.wasLocationPrompted(context) -> {
+                fineLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
+            else -> {
+                permissionDenied = true
+            }
+        }
     }
 
     LazyColumn(
@@ -94,7 +150,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
             }
         }
 
-        if (userLocation == null) {
+        if (permissionDenied) {
             item {
                 Text(
                     text = stringResource(R.string.home_location_required),
@@ -173,74 +229,48 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                 }
             }
         }
-
-        item {
-            Text(
-                text = stringResource(R.string.home_local_weather),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        item {
-            val weatherData = weatherState.data
-            when {
-                userLocation == null -> {
-                    Text(
-                        text = stringResource(R.string.home_location_required),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-                weatherState.isLoading -> {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
-                weatherData != null -> {
-                    WeatherCard(data = weatherData)
-                }
-                else -> {
-                    if (weatherState.hasFetched) {
-                        Text(
-                            text = stringResource(R.string.home_weather_unavailable),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 
-@Composable
-private fun WeatherCard(data: WeatherData) {
-    ElevatedCard(
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = data.city,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = data.temperature,
-                style = MaterialTheme.typography.displayMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = data.condition,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = data.highLow,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+private fun hasLocationPermission(context: android.content.Context): Boolean {
+    return hasFineLocation(context) || hasCoarseLocation(context)
+}
+
+private fun hasFineLocation(context: android.content.Context): Boolean {
+    return ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_FINE_LOCATION
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+}
+
+private fun hasCoarseLocation(context: android.content.Context): Boolean {
+    return ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_COARSE_LOCATION
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+}
+
+@Suppress("DEPRECATION")
+private suspend fun resolveUserLocation(context: android.content.Context): UserLocation? {
+    val locationManager = context.getSystemService(LocationManager::class.java) ?: return null
+    if (!hasLocationPermission(context)) return null
+    return withContext(Dispatchers.IO) {
+        val providers = locationManager.getProviders(true)
+        val location = providers.firstNotNullOfOrNull { provider ->
+            locationManager.getLastKnownLocation(provider)
+        } ?: return@withContext null
+        if (!Geocoder.isPresent()) return@withContext null
+        val geocoder = Geocoder(context, Locale.getDefault())
+        val results = geocoder.getFromLocation(location.latitude, location.longitude, 1)
+        val address = results?.firstOrNull() ?: return@withContext null
+        val city = address.locality ?: address.subAdminArea ?: address.subLocality
+        val state = address.adminArea ?: address.subAdminArea
+        val resolvedCity = city?.takeIf { it.isNotBlank() }
+        val resolvedState = state?.takeIf { it.isNotBlank() }
+        if (resolvedCity.isNullOrBlank() || resolvedState.isNullOrBlank()) {
+            null
+        } else {
+            UserLocation(city = resolvedCity, state = resolvedState)
         }
     }
 }
