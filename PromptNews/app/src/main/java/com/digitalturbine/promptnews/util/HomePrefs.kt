@@ -10,6 +10,8 @@ object HomePrefs {
     const val KEY_LOCATION_CITY = "location_city"
     const val KEY_LOCATION_STATE = "location_state"
     private const val KEY_LOCATION_PROMPTED = "location_prompted"
+    const val KEY_USER_NAME = "user_name"
+    private const val KEY_HAS_SEEN_NAME_PROMPT = "has_seen_name_prompt"
 
     fun getPrefs(context: Context): SharedPreferences =
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -58,5 +60,22 @@ object HomePrefs {
 
     fun setLocationPrompted(context: Context, value: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_LOCATION_PROMPTED, value).apply()
+    }
+
+    fun getUserName(context: Context): String? {
+        val name = getPrefs(context).getString(KEY_USER_NAME, "").orEmpty().trim()
+        return name.ifBlank { null }
+    }
+
+    fun saveUserName(context: Context, name: String) {
+        getPrefs(context).edit().putString(KEY_USER_NAME, name.trim()).apply()
+    }
+
+    fun hasSeenNamePrompt(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_HAS_SEEN_NAME_PROMPT, false)
+    }
+
+    fun setHasSeenNamePrompt(context: Context, value: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_HAS_SEEN_NAME_PROMPT, value).apply()
     }
 }

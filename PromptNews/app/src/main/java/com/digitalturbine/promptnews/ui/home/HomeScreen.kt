@@ -9,6 +9,7 @@ import android.location.LocationManager
 import android.content.pm.PackageManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,10 +19,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -51,6 +55,7 @@ import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Calendar
 import java.util.Locale
 
 @Composable
@@ -58,12 +63,15 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var userLocation by remember { mutableStateOf(HomePrefs.getUserLocation(context)) }
+    var userName by remember { mutableStateOf(HomePrefs.getUserName(context)) }
     val localNewsItems by viewModel.localNewsItems.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isLoadingMore by viewModel.isLoadingMore.collectAsState()
     val hasFetched by viewModel.hasFetched.collectAsState()
     val hasMore by viewModel.hasMore.collectAsState()
     var permissionDenied by remember { mutableStateOf(false) }
+    var showNamePrompt by remember { mutableStateOf(!HomePrefs.hasSeenNamePrompt(context)) }
+    var nameInput by remember { mutableStateOf(userName.orEmpty()) }
 
     fun fetchLocationAndNews() {
         if (!hasLocationPermission(context)) {
@@ -116,6 +124,8 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                     key == HomePrefs.KEY_LOCATION_STATE
                 ) {
                     userLocation = HomePrefs.getUserLocation(context)
+                } else if (key == HomePrefs.KEY_USER_NAME) {
+                    userName = HomePrefs.getUserName(context)
                 }
             }
         prefs.registerOnSharedPreferenceChangeListener(listener)
@@ -137,6 +147,50 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         }
     }
 
+    if (showNamePrompt) {
+        AlertDialog(
+            onDismissRequest = {
+                HomePrefs.saveUserName(context, "")
+                HomePrefs.setHasSeenNamePrompt(context, true)
+                showNamePrompt = false
+            },
+            title = { Text(text = stringResource(R.string.home_name_prompt_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(text = stringResource(R.string.home_name_prompt_body))
+                    TextField(
+                        value = nameInput,
+                        onValueChange = { nameInput = it }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        HomePrefs.saveUserName(context, nameInput)
+                        HomePrefs.setHasSeenNamePrompt(context, true)
+                        userName = HomePrefs.getUserName(context)
+                        showNamePrompt = false
+                    }
+                ) {
+                    Text(text = stringResource(R.string.home_name_prompt_continue))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        HomePrefs.saveUserName(context, "")
+                        HomePrefs.setHasSeenNamePrompt(context, true)
+                        userName = null
+                        showNamePrompt = false
+                    }
+                ) {
+                    Text(text = stringResource(R.string.home_name_prompt_skip))
+                }
+            }
+        )
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -144,6 +198,14 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         contentPadding = PaddingValues(vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        item {
+            Text(
+                text = getGreeting(userName),
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+        }
+
         item {
             Text(
                 text = stringResource(R.string.home_local_stories),
@@ -235,6 +297,22 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                 }
             }
         }
+    }
+}
+
+private fun getGreeting(userName: String?): String {
+    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    val greeting = when (hour) {
+        in 0..11 -> "Good Morning"
+        in 12..17 -> "Good Afternoon"
+        in 18..20 -> "Good Evening"
+        else -> "Goodnight"
+    }
+    val trimmedName = userName?.trim().orEmpty()
+    return if (trimmedName.isNotEmpty()) {
+        "$greeting, $trimmedName"
+    } else {
+        greeting
     }
 }
 

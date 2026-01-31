@@ -20,4 +20,8 @@
     <string name="home_top_story_badge">Top Story</string>
     <string name="home_hero_meta">%1$s \u2022 %2$s</string>
     <string name="home_latest_stories">Latest Stories</string>
+    <string name="home_name_prompt_title">Welcome!</string>
+    <string name="home_name_prompt_body">What’s your name?</string>
+    <string name="home_name_prompt_continue">Continue</string>
+    <string name="home_name_prompt_skip">Skip</string>
 </resources>
