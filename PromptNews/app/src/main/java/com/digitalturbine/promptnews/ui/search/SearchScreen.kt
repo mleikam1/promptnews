@@ -39,6 +39,7 @@ import com.digitalturbine.promptnews.data.Clip
 import com.digitalturbine.promptnews.data.SearchUi
 import com.digitalturbine.promptnews.data.isFotoscapesStory
 import com.digitalturbine.promptnews.data.history.HistoryRepository
+import com.digitalturbine.promptnews.di.AppGraph
 import com.digitalturbine.promptnews.util.isNflIntent
 import com.digitalturbine.promptnews.util.InterestTracker
 import com.digitalturbine.promptnews.ui.components.HeroCard
@@ -79,7 +80,7 @@ fun SearchScreen(
     screenState: SearchScreenState,
     onSearchRequested: (String) -> Unit,
     onBack: () -> Unit,
-    vm: SearchViewModel = viewModel()
+    vm: SearchViewModel = viewModel(factory = AppGraph.searchViewModelFactory)
 ) {
     val ui by vm.ui.collectAsState()
     val ctx = LocalContext.current

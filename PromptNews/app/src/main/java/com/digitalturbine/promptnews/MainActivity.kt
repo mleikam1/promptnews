@@ -27,6 +27,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.digitalturbine.promptnews.di.AppGraph
 import com.digitalturbine.promptnews.ui.home.HomeFragmentHost
 import com.digitalturbine.promptnews.ui.history.HistoryScreen
 import com.digitalturbine.promptnews.ui.PromptNewsHeaderBar
@@ -46,6 +47,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppGraph.init(application)
         lifecycleScope.launch {
             historyRepository.pruneOldEntries()
         }
