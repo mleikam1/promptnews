@@ -19,9 +19,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
@@ -191,111 +195,140 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         )
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Text(
-                text = getGreeting(userName),
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-        }
+    Column(modifier = Modifier.fillMaxSize()) {
+        HomeHeaderBar(onProfileClick = {})
 
-        item {
-            Text(
-                text = stringResource(R.string.home_local_stories),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            userLocation?.let { location ->
-                Text(
-                    text = "${location.city}, ${location.state}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        if (permissionDenied) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
             item {
                 Text(
-                    text = stringResource(R.string.home_location_required),
-                    style = MaterialTheme.typography.bodyLarge
+                    text = getGreeting(userName),
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 16.dp)
                 )
             }
-        } else {
-            when {
-                isLoading -> {
-                    item {
-                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
-                    }
-                }
-                hasFetched && localNewsItems.isEmpty() -> {
-                    item {
-                        Text(
-                            text = stringResource(R.string.home_no_local_stories),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                }
-                else -> {
-                    val hero = localNewsItems.firstOrNull()
-                    if (hero != null) {
-                        item {
-                            HeroCard(hero) {
-                                context.startActivity(
-                                    Intent(context, ArticleWebViewActivity::class.java)
-                                        .putExtra("url", hero.url)
-                                )
-                            }
-                        }
-                    }
-                    items(localNewsItems.drop(1)) { article ->
-                        RowCard(article) {
-                            context.startActivity(
-                                Intent(context, ArticleWebViewActivity::class.java)
-                                    .putExtra("url", article.url)
-                            )
-                        }
-                        HorizontalDivider(thickness = 0.5.dp)
-                    }
+
+            item {
+                Text(
+                    text = stringResource(R.string.home_local_stories),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                userLocation?.let { location ->
+                    Text(
+                        text = "${location.city}, ${location.state}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
-            val location = userLocation
-            if (
-                location != null &&
-                hasMore &&
-                localNewsItems.isNotEmpty() &&
-                !isLoading
-            ) {
+            if (permissionDenied) {
                 item {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        OutlinedButton(
-                            onClick = {
-                                viewModel.loadMoreLocalNews(location)
-                            },
-                            enabled = !isLoadingMore
-                        ) {
-                            if (isLoadingMore) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.home_location_required),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            } else {
+                when {
+                    isLoading -> {
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
                             }
-                            Text(text = stringResource(R.string.home_more_local_news))
+                        }
+                    }
+                    hasFetched && localNewsItems.isEmpty() -> {
+                        item {
+                            Text(
+                                text = stringResource(R.string.home_no_local_stories),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                    else -> {
+                        val hero = localNewsItems.firstOrNull()
+                        if (hero != null) {
+                            item {
+                                HeroCard(hero) {
+                                    context.startActivity(
+                                        Intent(context, ArticleWebViewActivity::class.java)
+                                            .putExtra("url", hero.url)
+                                    )
+                                }
+                            }
+                        }
+                        items(localNewsItems.drop(1)) { article ->
+                            RowCard(article) {
+                                context.startActivity(
+                                    Intent(context, ArticleWebViewActivity::class.java)
+                                        .putExtra("url", article.url)
+                                )
+                            }
+                            HorizontalDivider(thickness = 0.5.dp)
+                        }
+                    }
+                }
+                val location = userLocation
+                if (
+                    location != null &&
+                    hasMore &&
+                    localNewsItems.isNotEmpty() &&
+                    !isLoading
+                ) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.loadMoreLocalNews(location)
+                                },
+                                enabled = !isLoadingMore
+                            ) {
+                                if (isLoadingMore) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                                Text(text = stringResource(R.string.home_more_local_news))
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun HomeHeaderBar(onProfileClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "PromptNews",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        IconButton(
+            onClick = onProfileClick,
+            modifier = Modifier.align(Alignment.CenterEnd)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.AccountCircle,
+                contentDescription = stringResource(R.string.profile)
+            )
         }
     }
 }
