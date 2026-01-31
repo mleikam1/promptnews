@@ -1,10 +1,12 @@
 package com.digitalturbine.promptnews.ui.home
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.location.Geocoder
 import android.location.LocationManager
+import android.content.pm.PackageManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -60,6 +62,9 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     var permissionDenied by remember { mutableStateOf(false) }
 
     fun fetchLocationAndNews() {
+        if (!hasLocationPermission(context)) {
+            return
+        }
         scope.launch {
             val resolvedLocation = resolveUserLocation(context) ?: HomePrefs.getUserLocation(context)
             if (resolvedLocation != null) {
@@ -74,7 +79,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         HomePrefs.setLocationPrompted(context, true)
-        if (granted) {
+        if (granted && hasLocationPermission(context)) {
             permissionDenied = false
             fetchLocationAndNews()
         } else {
@@ -89,7 +94,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         HomePrefs.setLocationPrompted(context, true)
-        if (granted || hasCoarseLocation(context)) {
+        if (granted || hasLocationPermission(context)) {
             permissionDenied = false
             fetchLocationAndNews()
         } else {
@@ -232,22 +237,15 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     }
 }
 
-private fun hasLocationPermission(context: android.content.Context): Boolean {
-    return hasFineLocation(context) || hasCoarseLocation(context)
-}
-
-private fun hasFineLocation(context: android.content.Context): Boolean {
+private fun hasLocationPermission(context: Context): Boolean {
     return ContextCompat.checkSelfPermission(
         context,
         Manifest.permission.ACCESS_FINE_LOCATION
-    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-}
-
-private fun hasCoarseLocation(context: android.content.Context): Boolean {
-    return ContextCompat.checkSelfPermission(
-        context,
-        Manifest.permission.ACCESS_COARSE_LOCATION
-    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    ) == PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
 }
 
 @Suppress("DEPRECATION")
