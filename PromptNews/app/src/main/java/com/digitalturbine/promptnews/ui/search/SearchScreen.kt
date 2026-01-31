@@ -58,7 +58,6 @@ import java.util.Locale
 
 private val DEFAULT_TRENDING_PROMPTS = listOf(
     "Breaking news today",
-    "Weather this week",
     "NFL scores today",
     "Taylor Swift news",
     "Stock market today",

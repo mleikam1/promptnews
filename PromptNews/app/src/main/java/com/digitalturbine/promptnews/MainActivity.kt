@@ -1,14 +1,8 @@
 package com.digitalturbine.promptnews
 
-import android.Manifest
-import android.location.Geocoder
-import android.location.Location
-import android.location.LocationManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -26,7 +20,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
@@ -41,51 +34,20 @@ import com.digitalturbine.promptnews.ui.search.SearchScreen
 import com.digitalturbine.promptnews.ui.search.SearchScreenState
 import com.digitalturbine.promptnews.ui.sports.SportsScreen
 import com.digitalturbine.promptnews.data.sports.SportsRepository
-import com.digitalturbine.promptnews.util.HomePrefs
-import com.digitalturbine.promptnews.data.UserLocation
 import com.digitalturbine.promptnews.data.history.HistoryRepository
 import com.digitalturbine.promptnews.data.history.HistoryType
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
-import java.util.Locale
-import kotlin.coroutines.resume
 
 class MainActivity : FragmentActivity() {
     private val historyRepository by lazy { HistoryRepository.getInstance(applicationContext) }
-    private val fineLocationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        HomePrefs.setLocationPrompted(this, true)
-        if (granted) {
-            resolveAndStoreLocation()
-        } else if (hasCoarseLocation()) {
-            resolveAndStoreLocation()
-        } else {
-            coarseLocationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-        }
-    }
-
-    private val coarseLocationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        HomePrefs.setLocationPrompted(this, true)
-        if (granted) {
-            resolveAndStoreLocation()
-        } else {
-            HomePrefs.setUserLocation(this, null)
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         lifecycleScope.launch {
             historyRepository.pruneOldEntries()
         }
-        requestLocationOnLaunch()
         setContent {
             MaterialTheme {
                 val navController = rememberNavController()
@@ -230,84 +192,6 @@ class MainActivity : FragmentActivity() {
         lifecycleScope.launch {
             historyRepository.pruneOldEntries()
         }
-    }
-
-    private fun requestLocationOnLaunch() {
-        if (hasLocationPermission()) {
-            resolveAndStoreLocation()
-            return
-        }
-        if (!HomePrefs.wasLocationPrompted(this)) {
-            fineLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-    }
-
-    private fun hasLocationPermission(): Boolean {
-        return hasFineLocation() || hasCoarseLocation()
-    }
-
-    private fun hasFineLocation(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun hasCoarseLocation(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun resolveAndStoreLocation() {
-        val locationManager = getSystemService(LocationManager::class.java) ?: return
-        if (!hasLocationPermission()) return
-        lifecycleScope.launch {
-            val location = getBestLocation(locationManager)
-            if (location != null) {
-                val userLocation = withContext(Dispatchers.IO) { reverseGeocode(location) }
-                if (userLocation != null) {
-                    HomePrefs.setUserLocation(this@MainActivity, userLocation)
-                }
-            }
-        }
-    }
-
-    private suspend fun getBestLocation(locationManager: LocationManager): Location? {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            return suspendCancellableCoroutine { cont ->
-                val provider = if (hasFineLocation() && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                    LocationManager.GPS_PROVIDER
-                } else {
-                    LocationManager.NETWORK_PROVIDER
-                }
-                locationManager.getCurrentLocation(provider, null, mainExecutor) { loc ->
-                    cont.resume(loc)
-                }
-            }
-        }
-        return withContext(Dispatchers.IO) {
-            val providers = locationManager.getProviders(true)
-            val provider = providers.firstOrNull() ?: return@withContext null
-            locationManager.getLastKnownLocation(provider)
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun reverseGeocode(location: Location): UserLocation? {
-        if (!Geocoder.isPresent()) return null
-        val geocoder = Geocoder(this, Locale.getDefault())
-        val results = geocoder.getFromLocation(location.latitude, location.longitude, 1)
-        val address = results?.firstOrNull() ?: return null
-        val city = address.locality ?: address.subAdminArea ?: address.subLocality
-        val state = address.adminArea ?: address.subAdminArea
-        val resolvedCity = city?.takeIf { it.isNotBlank() }
-        val resolvedState = state?.takeIf { it.isNotBlank() }
-        if (resolvedCity.isNullOrBlank() || resolvedState.isNullOrBlank()) {
-            return null
-        }
-        return UserLocation(city = resolvedCity, state = resolvedState)
     }
 }
 
