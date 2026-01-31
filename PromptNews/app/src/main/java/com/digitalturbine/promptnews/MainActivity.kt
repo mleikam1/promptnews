@@ -208,10 +208,12 @@ class MainActivity : FragmentActivity() {
                                     HistoryEntryType.ARTICLE_CLICK -> {
                                         val url = entry.url.orEmpty()
                                         if (url.isNotBlank()) {
-                                            startActivity(
-                                                Intent(this, ArticleWebViewActivity::class.java)
-                                                    .putExtra("url", url)
+                                            val intent = Intent(
+                                                this@MainActivity,
+                                                ArticleWebViewActivity::class.java
                                             )
+                                            intent.putExtra("url", url)
+                                            startActivity(intent)
                                         } else {
                                             val fallbackQuery = entry.title.orEmpty()
                                             if (fallbackQuery.isBlank()) return@HistoryScreen
