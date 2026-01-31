@@ -39,7 +39,6 @@ import com.digitalturbine.promptnews.data.Clip
 import com.digitalturbine.promptnews.data.SearchUi
 import com.digitalturbine.promptnews.data.isFotoscapesStory
 import com.digitalturbine.promptnews.data.history.HistoryRepository
-import com.digitalturbine.promptnews.data.history.HistoryType
 import com.digitalturbine.promptnews.ui.PromptNewsTopBar
 import com.digitalturbine.promptnews.util.isNflIntent
 import com.digitalturbine.promptnews.ui.components.HeroCard
@@ -77,9 +76,8 @@ enum class SearchScreenState {
 @Composable
 fun SearchScreen(
     initialQuery: String? = null,
-    initialSource: String? = null,
     screenState: SearchScreenState,
-    onSearchRequested: (String, HistoryType) -> Unit,
+    onSearchRequested: (String) -> Unit,
     onBack: () -> Unit,
     vm: SearchViewModel = viewModel()
 ) {
@@ -115,26 +113,26 @@ fun SearchScreen(
         if (url.isBlank()) return
         ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", url))
     }
-    fun runSearch(q: String, type: HistoryType, recordHistory: Boolean) {
+    fun runSearch(q: String, recordHistory: Boolean) {
         val trimmed = q.trim()
         if (trimmed.isBlank()) return
         text = trimmed
         vm.runSearch(trimmed)
         if (recordHistory) {
             scope.launch {
-                historyRepository.addEntry(type, trimmed)
+                historyRepository.addEntry(trimmed)
             }
         }
     }
     fun runSearchFromInput(q: String) {
         val trimmed = q.trim()
         if (trimmed.isBlank()) return
-        onSearchRequested(trimmed, HistoryType.SEARCH)
+        onSearchRequested(trimmed)
     }
     fun runChipSearch(q: String) {
         val trimmed = q.trim()
         if (trimmed.isBlank()) return
-        onSearchRequested(trimmed, HistoryType.CHIP)
+        onSearchRequested(trimmed)
     }
 
     LaunchedEffect(ui) {
@@ -150,8 +148,7 @@ fun SearchScreen(
     LaunchedEffect(initialQuery) {
         val trimmed = initialQuery?.trim().orEmpty()
         if (trimmed.isNotBlank() && trimmed != lastQuery) {
-            val type = initialSource?.let { source -> runCatching { HistoryType.valueOf(source) }.getOrNull() }
-            runSearch(trimmed, type ?: HistoryType.SEARCH, type != null)
+            runSearch(trimmed, recordHistory = true)
         }
     }
 

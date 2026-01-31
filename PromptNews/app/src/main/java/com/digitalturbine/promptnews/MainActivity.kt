@@ -35,7 +35,6 @@ import com.digitalturbine.promptnews.ui.search.SearchScreenState
 import com.digitalturbine.promptnews.ui.sports.SportsScreen
 import com.digitalturbine.promptnews.data.sports.SportsRepository
 import com.digitalturbine.promptnews.data.history.HistoryRepository
-import com.digitalturbine.promptnews.data.history.HistoryType
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -103,28 +102,25 @@ class MainActivity : FragmentActivity() {
                         modifier = Modifier.padding(pad)
                     ) {
                         composable(
-                            route = "${Dest.Search.route}?query={query}&source={source}",
+                            route = "${Dest.Search.route}?query={query}",
                             arguments = listOf(
-                                navArgument("query") { defaultValue = "" },
-                                navArgument("source") { defaultValue = "" }
+                                navArgument("query") { defaultValue = "" }
                             )
                         ) { backStackEntry ->
                             SearchScreen(
                                 initialQuery = backStackEntry.arguments?.getString("query"),
-                                initialSource = backStackEntry.arguments?.getString("source"),
                                 screenState = SearchScreenState.Prompt,
-                                onSearchRequested = { query, source ->
+                                onSearchRequested = { query ->
                                     // Push results onto the back stack so back returns to prompt.
-                                    navController.navigate(Dest.SearchResults.routeFor(query, source))
+                                    navController.navigate(Dest.SearchResults.routeFor(query))
                                 },
                                 onBack = { navController.popBackStack() }
                             )
                         }
                         composable(
-                            route = "${Dest.SearchResults.route}?query={query}&source={source}",
+                            route = "${Dest.SearchResults.route}?query={query}",
                             arguments = listOf(
-                                navArgument("query") { defaultValue = "" },
-                                navArgument("source") { defaultValue = "" }
+                                navArgument("query") { defaultValue = "" }
                             )
                         ) { backStackEntry ->
                             val query = backStackEntry.arguments?.getString("query").orEmpty()
@@ -153,11 +149,10 @@ class MainActivity : FragmentActivity() {
                                 SearchResultsRoute.News -> {
                                     SearchScreen(
                                         initialQuery = query,
-                                        initialSource = backStackEntry.arguments?.getString("source"),
                                         screenState = SearchScreenState.Results,
-                                        onSearchRequested = { newQuery, source ->
+                                        onSearchRequested = { newQuery ->
                                             // Each follow-up prompt creates its own results entry.
-                                            navController.navigate(Dest.SearchResults.routeFor(newQuery, source))
+                                            navController.navigate(Dest.SearchResults.routeFor(newQuery))
                                         },
                                         onBack = { navController.popBackStack() }
                                     )
@@ -177,7 +172,7 @@ class MainActivity : FragmentActivity() {
                                 }
                                 // History taps should navigate forward and preserve back behavior.
                                 navController.navigate(
-                                    Dest.SearchResults.routeFor(entry.label, entry.type)
+                                    Dest.SearchResults.routeFor(entry.query)
                                 )
                             })
                         }
@@ -201,8 +196,8 @@ private sealed class Dest(val route: String, val label: String, val icon: ImageV
     data object Sports : Dest("tab_sports", "Sports", Icons.Filled.SportsSoccer)
     data object History : Dest("tab_history", "History", Icons.Filled.History)
     data object SearchResults : Dest("tab_search_results", "Results", Icons.Filled.Edit) {
-        fun routeFor(query: String, source: HistoryType): String {
-            return "$route?query=${Uri.encode(query)}&source=${source.name}"
+        fun routeFor(query: String): String {
+            return "$route?query=${Uri.encode(query)}"
         }
     }
 }

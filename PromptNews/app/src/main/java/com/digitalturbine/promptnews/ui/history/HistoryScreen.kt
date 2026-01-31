@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -28,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.digitalturbine.promptnews.data.history.HistoryEntry
 import com.digitalturbine.promptnews.data.history.HistoryRepository
-import com.digitalturbine.promptnews.data.history.HistoryType
 import com.digitalturbine.promptnews.ui.PromptNewsTopBar
 import com.digitalturbine.promptnews.util.TimeLabelFormatter
 
@@ -78,14 +76,11 @@ fun HistoryScreen(
                 ListItem(
                     leadingContent = {
                         Icon(
-                            imageVector = when (entry.type) {
-                                HistoryType.CHIP -> Icons.Filled.Label
-                                HistoryType.SEARCH -> Icons.Filled.Search
-                            },
+                            imageVector = Icons.Filled.Search,
                             contentDescription = null
                         )
                     },
-                    headlineContent = { Text(entry.label) },
+                    headlineContent = { Text(entry.query) },
                     supportingContent = { Text(TimeLabelFormatter.formatTimeLabel(entry.timestampMs)) },
                     modifier = Modifier
                         .fillMaxWidth()
