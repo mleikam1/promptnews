@@ -36,6 +36,7 @@ import com.digitalturbine.promptnews.ui.search.SearchScreenState
 import com.digitalturbine.promptnews.ui.sports.SportsScreen
 import com.digitalturbine.promptnews.data.sports.SportsRepository
 import com.digitalturbine.promptnews.data.history.HistoryRepository
+import com.digitalturbine.promptnews.util.InterestTracker
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -53,6 +54,7 @@ class MainActivity : FragmentActivity() {
                 val navController = rememberNavController()
                 val items = listOf(Dest.Home, Dest.Search, Dest.History)
                 var isGraphReady by remember { mutableStateOf(false) }
+                val interestTracker = remember { InterestTracker.getInstance(applicationContext) }
 
                 // The crash happens when navigate() calls findStartDestination() while the graph
                 // is still empty. Track readiness so we never navigate until nodes exist.
@@ -180,6 +182,7 @@ class MainActivity : FragmentActivity() {
                                 if (!isGraphReady) {
                                     return@HistoryScreen
                                 }
+                                interestTracker.recordInteraction(entry.query)
                                 // History taps should navigate forward and preserve back behavior.
                                 navController.navigate(
                                     Dest.SearchResults.routeFor(entry.query)
