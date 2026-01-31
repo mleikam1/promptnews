@@ -3,6 +3,7 @@ package com.digitalturbine.promptnews
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.content.Intent
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -26,6 +27,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.digitalturbine.promptnews.di.AppGraph
 import com.digitalturbine.promptnews.ui.home.HomeFragmentHost
@@ -37,7 +39,9 @@ import com.digitalturbine.promptnews.ui.search.SearchScreenState
 import com.digitalturbine.promptnews.ui.sports.SportsScreen
 import com.digitalturbine.promptnews.data.sports.SportsRepository
 import com.digitalturbine.promptnews.data.history.HistoryRepository
+import com.digitalturbine.promptnews.data.history.HistoryEntryType
 import com.digitalturbine.promptnews.util.InterestTracker
+import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -134,12 +138,17 @@ class MainActivity : FragmentActivity() {
                             )
                         }
                         composable(
-                            route = "${Dest.SearchResults.route}?query={query}",
+                            route = "${Dest.SearchResults.route}?query={query}&serpOnly={serpOnly}",
                             arguments = listOf(
-                                navArgument("query") { defaultValue = "" }
+                                navArgument("query") { defaultValue = "" },
+                                navArgument("serpOnly") {
+                                    defaultValue = false
+                                    type = NavType.BoolType
+                                }
                             )
                         ) { backStackEntry ->
                             val query = backStackEntry.arguments?.getString("query").orEmpty()
+                            val serpOnly = backStackEntry.arguments?.getBoolean("serpOnly") ?: false
                             val sportsRepository = remember { SportsRepository() }
                             val routeState by produceState<SearchResultsRoute>(initialValue = SearchResultsRoute.Loading, key1 = query) {
                                 if (query.isBlank()) {
@@ -164,6 +173,8 @@ class MainActivity : FragmentActivity() {
                                     SearchScreen(
                                         initialQuery = query,
                                         screenState = SearchScreenState.Results,
+                                        allowFotoscapesFallback = !serpOnly,
+                                        recordInitialQueryInHistory = !serpOnly,
                                         onSearchRequested = { newQuery ->
                                             // Each follow-up prompt creates its own results entry.
                                             navController.navigate(Dest.SearchResults.routeFor(newQuery))
@@ -184,11 +195,32 @@ class MainActivity : FragmentActivity() {
                                 if (!isGraphReady) {
                                     return@HistoryScreen
                                 }
-                                interestTracker.recordInteraction(entry.query)
-                                // History taps should navigate forward and preserve back behavior.
-                                navController.navigate(
-                                    Dest.SearchResults.routeFor(entry.query)
-                                )
+                                when (entry.type) {
+                                    HistoryEntryType.QUERY -> {
+                                        val query = entry.query.orEmpty()
+                                        if (query.isBlank()) return@HistoryScreen
+                                        interestTracker.recordInteraction(query)
+                                        // History taps should navigate forward and preserve back behavior.
+                                        navController.navigate(
+                                            Dest.SearchResults.routeFor(query, serpOnly = true)
+                                        )
+                                    }
+                                    HistoryEntryType.ARTICLE_CLICK -> {
+                                        val url = entry.url.orEmpty()
+                                        if (url.isNotBlank()) {
+                                            startActivity(
+                                                Intent(this, ArticleWebViewActivity::class.java)
+                                                    .putExtra("url", url)
+                                            )
+                                        } else {
+                                            val fallbackQuery = entry.title.orEmpty()
+                                            if (fallbackQuery.isBlank()) return@HistoryScreen
+                                            navController.navigate(
+                                                Dest.SearchResults.routeFor(fallbackQuery, serpOnly = true)
+                                            )
+                                        }
+                                    }
+                                }
                             })
                         }
                     }
@@ -211,8 +243,8 @@ private sealed class Dest(val route: String, val label: String, val icon: ImageV
     data object Sports : Dest("tab_sports", "Sports", Icons.Filled.SportsSoccer)
     data object History : Dest("tab_history", "History", Icons.Filled.History)
     data object SearchResults : Dest("tab_search_results", "Results", Icons.Filled.Edit) {
-        fun routeFor(query: String): String {
-            return "$route?query=${Uri.encode(query)}"
+        fun routeFor(query: String, serpOnly: Boolean = false): String {
+            return "$route?query=${Uri.encode(query)}&serpOnly=$serpOnly"
         }
     }
 }

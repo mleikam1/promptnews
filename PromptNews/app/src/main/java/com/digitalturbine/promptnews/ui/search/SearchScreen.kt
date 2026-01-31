@@ -78,6 +78,8 @@ enum class SearchScreenState {
 fun SearchScreen(
     initialQuery: String? = null,
     screenState: SearchScreenState,
+    allowFotoscapesFallback: Boolean = true,
+    recordInitialQueryInHistory: Boolean = true,
     onSearchRequested: (String) -> Unit,
     onBack: () -> Unit,
     vm: SearchViewModel = viewModel(factory = AppGraph.searchViewModelFactory)
@@ -101,6 +103,9 @@ fun SearchScreen(
 
     fun openFotoscapesArticle(ui: FotoscapesArticleUi) {
         recordResultClick()
+        scope.launch {
+            historyRepository.addArticleClick(url = null, title = ui.title)
+        }
         FotoscapesArticleActivity.start(ctx, ui)
     }
 
@@ -119,22 +124,28 @@ fun SearchScreen(
             article.url
         }
         if (url.isBlank()) return
+        scope.launch {
+            historyRepository.addArticleClick(url = url, title = article.title)
+        }
         ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", url))
     }
 
-    fun openArticle(url: String) {
+    fun openArticle(url: String, title: String? = null) {
         recordResultClick()
         if (url.isBlank()) return
+        scope.launch {
+            historyRepository.addArticleClick(url = url, title = title)
+        }
         ctx.startActivity(Intent(ctx, ArticleWebViewActivity::class.java).putExtra("url", url))
     }
     fun runSearch(q: String, recordHistory: Boolean) {
         val trimmed = q.trim()
         if (trimmed.isBlank()) return
         text = trimmed
-        vm.runSearch(trimmed, screenName = "Prompt")
+        vm.runSearch(trimmed, screenName = "Prompt", allowFotoscapesFallback = allowFotoscapesFallback)
         if (recordHistory) {
             scope.launch {
-                historyRepository.addEntry(trimmed)
+                historyRepository.addQueryEntry(trimmed)
             }
         }
     }
@@ -161,10 +172,10 @@ fun SearchScreen(
         }
     }
 
-    LaunchedEffect(initialQuery) {
+    LaunchedEffect(initialQuery, allowFotoscapesFallback, recordInitialQueryInHistory) {
         val trimmed = initialQuery?.trim().orEmpty()
         if (trimmed.isNotBlank() && trimmed != lastQuery) {
-            runSearch(trimmed, recordHistory = true)
+            runSearch(trimmed, recordHistory = recordInitialQueryInHistory)
         }
     }
 
@@ -297,7 +308,7 @@ fun SearchScreen(
                                 } else if (hero.isFotoscapesStory()) {
                                     val ui = remember(hero) { hero.toFotoscapesUi() }
                                     if (ui is FotoscapesExternalUi) {
-                                        HeroCard(hero) { openArticle(ui.link) }
+                                        HeroCard(hero) { openArticle(ui.link, ui.title) }
                                     }
                                 } else {
                                     HeroCard(hero) { openArticle(hero) }
@@ -315,7 +326,7 @@ fun SearchScreen(
                             } else if (a.isFotoscapesStory()) {
                                 val ui = remember(a) { a.toFotoscapesUi() }
                                 if (ui is FotoscapesExternalUi) {
-                                    RowCard(a, onClick = { openArticle(ui.link) })
+                                    RowCard(a, onClick = { openArticle(ui.link, ui.title) })
                                 }
                             } else {
                                 RowCard(a, onClick = { openArticle(a) })
@@ -348,7 +359,7 @@ fun SearchScreen(
                             }
                             item {
                                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    items(s.clips) { c -> ClipCard(c) { openArticle(c.url) } }
+                                    items(s.clips) { c -> ClipCard(c) { openArticle(c.url, c.title) } }
                                 }
                                 Spacer(Modifier.height(16.dp))
                             }

@@ -31,7 +31,7 @@ class SearchViewModel(
     private var page = 0
     private var loadMoreJob: Job? = null
 
-    fun runSearch(query: String, screenName: String = "Prompt") {
+    fun runSearch(query: String, screenName: String = "Prompt", allowFotoscapesFallback: Boolean = true) {
         val q = query.trim()
         if (q.isEmpty()) return
         currentQuery = q
@@ -61,7 +61,7 @@ class SearchViewModel(
                     _ui.value = SearchUi.Error(err.message ?: "Search failed.")
                     return@launch
                 }
-                val fs = if (serp.isEmpty()) {
+                val fs = if (serp.isEmpty() && allowFotoscapesFallback) {
                     Log.d(TAG, "SerpAPI empty; triggering FotoScapes fallback for query=$q")
                     repo.fetchFotoScapes(q, limit = 3)
                 } else {
