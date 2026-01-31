@@ -58,7 +58,11 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var userLocation by remember { mutableStateOf(HomePrefs.getUserLocation(context)) }
-    val localNewsState by viewModel.localNewsState.collectAsState()
+    val localNewsItems by viewModel.localNewsItems.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
+    val hasFetched by viewModel.hasFetched.collectAsState()
+    val hasMore by viewModel.hasMore.collectAsState()
     var permissionDenied by remember { mutableStateOf(false) }
 
     fun fetchLocationAndNews() {
@@ -164,14 +168,14 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
             }
         } else {
             when {
-                localNewsState.isLoading -> {
+                isLoading -> {
                     item {
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator()
                         }
                     }
                 }
-                localNewsState.hasFetched && localNewsState.items.isEmpty() -> {
+                hasFetched && localNewsItems.isEmpty() -> {
                     item {
                         Text(
                             text = stringResource(R.string.home_no_local_stories),
@@ -180,8 +184,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                     }
                 }
                 else -> {
-                    val newsItems = localNewsState.items
-                    val hero = newsItems.firstOrNull()
+                    val hero = localNewsItems.firstOrNull()
                     if (hero != null) {
                         item {
                             HeroCard(hero) {
@@ -192,7 +195,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                             }
                         }
                     }
-                    items(newsItems.drop(1)) { article ->
+                    items(localNewsItems.drop(1)) { article ->
                         RowCard(article) {
                             context.startActivity(
                                 Intent(context, ArticleWebViewActivity::class.java)
@@ -207,9 +210,9 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
             val location = userLocation
             if (
                 location != null &&
-                !localNewsState.hasLoadedMore &&
-                localNewsState.items.size >= 4 &&
-                !localNewsState.isLoading
+                hasMore &&
+                localNewsItems.isNotEmpty() &&
+                !isLoading
             ) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -217,18 +220,16 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                             onClick = {
                                 viewModel.loadMoreLocalNews(location)
                             },
-                            enabled = !localNewsState.isLoadingMore
+                            enabled = !isLoadingMore
                         ) {
-                            if (localNewsState.isLoadingMore) {
+                            if (isLoadingMore) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(18.dp),
                                     strokeWidth = 2.dp
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Text(text = stringResource(R.string.home_loading_more))
-                            } else {
-                                Text(text = stringResource(R.string.home_more_local_news))
                             }
+                            Text(text = stringResource(R.string.home_more_local_news))
                         }
                     }
                 }

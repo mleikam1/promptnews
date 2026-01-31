@@ -3,81 +3,99 @@ package com.digitalturbine.promptnews.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.digitalturbine.promptnews.data.Article
+import com.digitalturbine.promptnews.data.UserLocation
 import com.digitalturbine.promptnews.data.serpapi.SerpApiRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import com.digitalturbine.promptnews.data.UserLocation
-
-data class LocalNewsState(
-    val isLoading: Boolean = false,
-    val isLoadingMore: Boolean = false,
-    val hasFetched: Boolean = false,
-    val hasLoadedMore: Boolean = false,
-    val items: List<Article> = emptyList()
-)
 
 class HomeViewModel(
     private val serpApiRepository: SerpApiRepository = SerpApiRepository()
 ) : ViewModel() {
-    private val _localNewsState = MutableStateFlow(LocalNewsState())
-    val localNewsState: StateFlow<LocalNewsState> = _localNewsState.asStateFlow()
+    private val _localNewsItems = MutableStateFlow<List<Article>>(emptyList())
+    val localNewsItems: StateFlow<List<Article>> = _localNewsItems.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _isLoadingMore = MutableStateFlow(false)
+    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
+
+    private val _hasFetched = MutableStateFlow(false)
+    val hasFetched: StateFlow<Boolean> = _hasFetched.asStateFlow()
+
+    private val _hasMore = MutableStateFlow(false)
+    val hasMore: StateFlow<Boolean> = _hasMore.asStateFlow()
 
     private var lastLocation: UserLocation? = null
+    private var currentPage: Int = 1
 
     fun clearLocalNews() {
         lastLocation = null
-        _localNewsState.value = LocalNewsState()
+        currentPage = 1
+        _localNewsItems.value = emptyList()
+        _isLoading.value = false
+        _isLoadingMore.value = false
+        _hasFetched.value = false
+        _hasMore.value = false
     }
 
     fun fetchLocalNews(city: String, state: String) {
         val location = UserLocation(city = city, state = state)
-        if (location == lastLocation && _localNewsState.value.hasFetched) return
+        if (location == lastLocation && _hasFetched.value) return
         lastLocation = location
         loadLocalNews(location)
     }
 
     fun loadMoreLocalNews(location: UserLocation) {
-        val currentState = _localNewsState.value
-        if (currentState.isLoadingMore || currentState.hasLoadedMore) return
+        if (_isLoadingMore.value || !_hasMore.value) return
         viewModelScope.launch {
-            _localNewsState.value = currentState.copy(isLoadingMore = true)
+            val nextPage = currentPage + 1
+            _isLoadingMore.value = true
             val query = "${location.city} ${location.state} local news"
-            val moreItems = serpApiRepository.fetchLocalNewsByOffset(
-                location = "${location.city}, ${location.state}",
-                query = query,
-                limit = MORE_LIMIT,
-                offset = currentState.items.size
-            )
-            _localNewsState.value = currentState.copy(
-                isLoadingMore = false,
-                hasLoadedMore = true,
-                items = currentState.items + moreItems
-            )
+            val result = runCatching {
+                serpApiRepository.fetchLocalNewsByOffset(
+                    location = "${location.city}, ${location.state}",
+                    query = query,
+                    limit = PAGE_SIZE,
+                    offset = (nextPage - 1) * PAGE_SIZE
+                )
+            }
+            val moreItems = result.getOrElse { emptyList() }
+            if (result.isSuccess) {
+                currentPage = nextPage
+                _localNewsItems.value = _localNewsItems.value + moreItems
+                _hasMore.value = moreItems.size == PAGE_SIZE
+            }
+            _isLoadingMore.value = false
         }
     }
 
     private fun loadLocalNews(location: UserLocation) {
         viewModelScope.launch {
-            _localNewsState.value = LocalNewsState(isLoading = true)
+            currentPage = 1
+            _isLoading.value = true
+            _hasFetched.value = false
+            _hasMore.value = false
+            _localNewsItems.value = emptyList()
             val query = "${location.city} ${location.state} local news"
-            val items = serpApiRepository.fetchLocalNewsByOffset(
-                location = "${location.city}, ${location.state}",
-                query = query,
-                limit = INITIAL_LIMIT,
-                offset = 0
-            )
-            _localNewsState.value = LocalNewsState(
-                isLoading = false,
-                hasFetched = true,
-                items = items
-            )
+            val items = runCatching {
+                serpApiRepository.fetchLocalNewsByOffset(
+                    location = "${location.city}, ${location.state}",
+                    query = query,
+                    limit = PAGE_SIZE,
+                    offset = 0
+                )
+            }.getOrElse { emptyList() }
+            _localNewsItems.value = items
+            _hasFetched.value = true
+            _hasMore.value = items.size == PAGE_SIZE
+            _isLoading.value = false
         }
     }
 
     companion object {
-        private const val INITIAL_LIMIT = 4
-        private const val MORE_LIMIT = 7
+        private const val PAGE_SIZE = 7
     }
 }

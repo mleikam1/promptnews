@@ -13,8 +13,8 @@
     <string name="home_local_near_you">Top news near you</string>
     <string name="home_local_more">More local news</string>
     <string name="home_location_required">Location permission is required to show local news</string>
-    <string name="home_no_local_stories">No local stories available.</string>
-    <string name="home_more_local_news">More local news</string>
+    <string name="home_no_local_stories">No local news available right now</string>
+    <string name="home_more_local_news">More</string>
     <string name="home_loading_more">Loading more</string>
     <string name="home_read_more">Read More</string>
     <string name="home_top_story_badge">Top Story</string>
