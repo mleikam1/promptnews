@@ -4,17 +4,14 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.room.TypeConverter
-import androidx.room.TypeConverters
 
 private const val HISTORY_DB_NAME = "history.db"
 
 @Database(
     entities = [HistoryEntry::class],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
-@TypeConverters(HistoryTypeConverters::class)
 abstract class HistoryDatabase : RoomDatabase() {
     abstract fun historyDao(): HistoryDao
 
@@ -29,20 +26,9 @@ abstract class HistoryDatabase : RoomDatabase() {
                         context.applicationContext,
                         HistoryDatabase::class.java,
                         HISTORY_DB_NAME
-                    ).build().also { instance = it }
+                    ).fallbackToDestructiveMigration()
+                    .build().also { instance = it }
             }
         }
-    }
-}
-
-class HistoryTypeConverters {
-    @TypeConverter
-    fun toType(value: String?): HistoryType? {
-        return value?.let { HistoryType.valueOf(it) }
-    }
-
-    @TypeConverter
-    fun fromType(type: HistoryType?): String? {
-        return type?.name
     }
 }

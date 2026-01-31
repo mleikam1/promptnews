@@ -14,11 +14,10 @@ class HistoryRepository private constructor(
         return dao.observeEntriesSince(clockMs() - HISTORY_RETENTION_MS)
     }
 
-    suspend fun addEntry(type: HistoryType, label: String) {
+    suspend fun addEntry(query: String) {
         val entry = HistoryEntry(
             id = UUID.randomUUID().toString(),
-            type = type,
-            label = label,
+            query = query,
             timestampMs = clockMs()
         )
         dao.insert(entry)
