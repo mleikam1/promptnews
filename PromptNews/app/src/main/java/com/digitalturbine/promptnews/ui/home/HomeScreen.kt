@@ -179,14 +179,15 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         }
 
         item {
+            val weatherData = weatherState.data
             when {
                 weatherState.isLoading -> {
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
-                weatherState.data != null -> {
-                    WeatherCard(data = weatherState.data)
+                weatherData != null -> {
+                    WeatherCard(data = weatherData)
                 }
                 else -> {
                     Text(
