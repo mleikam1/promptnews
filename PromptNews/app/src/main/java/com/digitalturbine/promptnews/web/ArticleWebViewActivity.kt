@@ -13,18 +13,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import com.digitalturbine.promptnews.ui.PromptNewsHeaderBar
 
 class ArticleWebViewActivity : ComponentActivity() {
 
@@ -46,16 +42,10 @@ class ArticleWebViewActivity : ComponentActivity() {
             var hasContent by remember { mutableStateOf(false) }
             Scaffold(
                 topBar = {
-                    CenterAlignedTopAppBar(
-                        title = { Text("PromptNews") },
-                        navigationIcon = {
-                            IconButton(onClick = { onBackPressedDispatcher.onBackPressed() }) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Back"
-                                )
-                            }
-                        }
+                    PromptNewsHeaderBar(
+                        showBack = true,
+                        onBackClick = { onBackPressedDispatcher.onBackPressed() },
+                        onProfileClick = {}
                     )
                 }
             ) { pad ->

@@ -65,7 +65,6 @@ import com.digitalturbine.promptnews.data.sports.SportsMatchModel
 import com.digitalturbine.promptnews.data.sports.SportsMatchStatusBucket
 import com.digitalturbine.promptnews.data.sports.TeamModel
 import com.digitalturbine.promptnews.data.sports.displayText
-import com.digitalturbine.promptnews.ui.PromptNewsTopBar
 import com.digitalturbine.promptnews.ui.components.HeroCard
 import com.digitalturbine.promptnews.ui.components.RowCard
 import com.digitalturbine.promptnews.ui.nfl.NflGamesWidgetFragment
@@ -78,9 +77,7 @@ fun SportsScreen(
     query: String?,
     vm: SportsViewModel = viewModel(),
     onMatchSelected: (SportsMatchModel) -> Unit = {},
-    onHighlightSelected: (HighlightModel) -> Unit = {},
-    showBack: Boolean = false,
-    onBack: () -> Unit = {}
+    onHighlightSelected: (HighlightModel) -> Unit = {}
 ) {
     val uiState by vm.uiState.collectAsState()
     val feedState by vm.feedState.collectAsState()
@@ -96,9 +93,7 @@ fun SportsScreen(
         feedError = feedError,
         onMatchSelected = onMatchSelected,
         onHighlightSelected = onHighlightSelected,
-        onLoadMoreStories = { vm.loadMoreStories() },
-        showBack = showBack,
-        onBack = onBack
+        onLoadMoreStories = { vm.loadMoreStories() }
     )
 }
 
@@ -109,9 +104,7 @@ private fun SportsScreenContent(
     feedError: String?,
     onMatchSelected: (SportsMatchModel) -> Unit,
     onHighlightSelected: (HighlightModel) -> Unit,
-    onLoadMoreStories: () -> Unit,
-    showBack: Boolean,
-    onBack: () -> Unit
+    onLoadMoreStories: () -> Unit
 ) {
     val context = LocalContext.current
     val showWidget = when (uiState) {
@@ -124,7 +117,6 @@ private fun SportsScreenContent(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        PromptNewsTopBar(title = "PromptNews", showBack = showBack, onBack = onBack)
         NflGamesWidgetContainer(
             showWidget = showWidget,
             modifier = Modifier

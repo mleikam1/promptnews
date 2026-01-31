@@ -5,8 +5,12 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.ui.Modifier
 import com.digitalturbine.promptnews.ui.components.FotoscapesArticleCard
+import com.digitalturbine.promptnews.ui.PromptNewsHeaderBar
 
 class FotoscapesArticleActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,7 +30,17 @@ class FotoscapesArticleActivity : ComponentActivity() {
         )
         setContent {
             MaterialTheme {
-                FotoscapesArticleCard(ui)
+                Scaffold(
+                    topBar = {
+                        PromptNewsHeaderBar(
+                            showBack = true,
+                            onBackClick = { onBackPressedDispatcher.onBackPressed() },
+                            onProfileClick = {}
+                        )
+                    }
+                ) { padding ->
+                    FotoscapesArticleCard(ui, modifier = Modifier.padding(padding))
+                }
             }
         }
     }

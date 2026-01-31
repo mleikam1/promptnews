@@ -39,7 +39,6 @@ import com.digitalturbine.promptnews.data.Clip
 import com.digitalturbine.promptnews.data.SearchUi
 import com.digitalturbine.promptnews.data.isFotoscapesStory
 import com.digitalturbine.promptnews.data.history.HistoryRepository
-import com.digitalturbine.promptnews.ui.PromptNewsTopBar
 import com.digitalturbine.promptnews.util.isNflIntent
 import com.digitalturbine.promptnews.ui.components.HeroCard
 import com.digitalturbine.promptnews.ui.components.FotoscapesArticleCard
@@ -164,10 +163,6 @@ fun SearchScreen(
         12.dp
     }
     Column(modifier = Modifier.fillMaxSize()) {
-        PromptNewsTopBar(
-            showBack = screenState == SearchScreenState.Results,
-            onBack = onBack
-        )
         Box(
             modifier = Modifier
                 .fillMaxSize()
