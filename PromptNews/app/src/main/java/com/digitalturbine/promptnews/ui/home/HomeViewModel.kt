@@ -2,7 +2,7 @@ package com.digitalturbine.promptnews.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.digitalturbine.promptnews.data.Article
+import com.digitalturbine.promptnews.data.SerpNewsItem
 import com.digitalturbine.promptnews.data.UserLocation
 import com.digitalturbine.promptnews.data.serpapi.SerpApiRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,8 +13,8 @@ import kotlinx.coroutines.launch
 class HomeViewModel(
     private val serpApiRepository: SerpApiRepository = SerpApiRepository()
 ) : ViewModel() {
-    private val _localNewsItems = MutableStateFlow<List<Article>>(emptyList())
-    val localNewsItems: StateFlow<List<Article>> = _localNewsItems.asStateFlow()
+    private val _localNewsItems = MutableStateFlow<List<SerpNewsItem>>(emptyList())
+    val localNewsItems: StateFlow<List<SerpNewsItem>> = _localNewsItems.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -55,11 +55,11 @@ class HomeViewModel(
             _isLoadingMore.value = true
             val query = "${location.city} ${location.state} local news"
             val result = runCatching {
-                serpApiRepository.fetchLocalNewsByOffset(
+                serpApiRepository.fetchLocalNewsPage(
                     location = "${location.city}, ${location.state}",
                     query = query,
-                    limit = PAGE_SIZE,
-                    offset = (nextPage - 1) * PAGE_SIZE
+                    page = nextPage,
+                    pageSize = PAGE_SIZE
                 )
             }
             val moreItems = result.getOrElse { emptyList() }
@@ -81,11 +81,11 @@ class HomeViewModel(
             _localNewsItems.value = emptyList()
             val query = "${location.city} ${location.state} local news"
             val items = runCatching {
-                serpApiRepository.fetchLocalNewsByOffset(
+                serpApiRepository.fetchLocalNewsPage(
                     location = "${location.city}, ${location.state}",
                     query = query,
-                    limit = PAGE_SIZE,
-                    offset = 0
+                    page = currentPage,
+                    pageSize = PAGE_SIZE
                 )
             }.getOrElse { emptyList() }
             _localNewsItems.value = items

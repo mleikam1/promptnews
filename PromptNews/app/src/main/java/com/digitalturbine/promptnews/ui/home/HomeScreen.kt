@@ -273,8 +273,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                 if (
                     location != null &&
                     hasMore &&
-                    localNewsItems.isNotEmpty() &&
-                    !isLoading
+                    localNewsItems.isNotEmpty()
                 ) {
                     item {
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {

@@ -26,21 +26,22 @@ class SerpApiRepository(
             results
         }
 
-    suspend fun fetchLocalNewsByOffset(
+    suspend fun fetchLocalNewsPage(
         location: String?,
         query: String,
-        limit: Int,
-        offset: Int
+        page: Int,
+        pageSize: Int
     ): List<Article> = withContext(Dispatchers.IO) {
-        Log.d(TAG, "Local request location=$location offset=$offset limit=$limit")
+        Log.d(TAG, "Local request location=$location page=$page pageSize=$pageSize")
         if (location.isNullOrBlank()) {
             Log.d(TAG, "Local request missing location, aborting")
             return@withContext emptyList()
         }
-        val results = searchRepository.fetchSerpNewsByOffset(
+        val serpPage = (page - 1).coerceAtLeast(0)
+        val results = searchRepository.fetchSerpNews(
             query = query,
-            limit = limit,
-            offset = offset,
+            page = serpPage,
+            pageSize = pageSize,
             location = location
         )
         Log.d(TAG, "Local results=${results.size}")
