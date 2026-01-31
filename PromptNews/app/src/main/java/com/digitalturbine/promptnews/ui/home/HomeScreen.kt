@@ -19,13 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
@@ -196,8 +192,6 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        HomeHeaderBar(onProfileClick = {})
-
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -303,32 +297,6 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun HomeHeaderBar(onProfileClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "PromptNews",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        IconButton(
-            onClick = onProfileClick,
-            modifier = Modifier.align(Alignment.CenterEnd)
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.AccountCircle,
-                contentDescription = stringResource(R.string.profile)
-            )
         }
     }
 }

@@ -99,7 +99,11 @@ fun HeroCard(article: Article, onClick: () -> Unit) {
 }
 
 @Composable
-fun FotoscapesArticleCard(article: FotoscapesArticleUi, onClick: (() -> Unit)? = null) {
+fun FotoscapesArticleCard(
+    article: FotoscapesArticleUi,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
+) {
     val scrollState = rememberScrollState()
     val clickModifier = if (onClick != null) {
         Modifier.clickable(onClick = onClick)
@@ -107,7 +111,7 @@ fun FotoscapesArticleCard(article: FotoscapesArticleUi, onClick: (() -> Unit)? =
         Modifier
     }
     Column(
-        modifier = Modifier
+        modifier = modifier
             .then(clickModifier)
             .fillMaxWidth()
             .verticalScroll(scrollState)

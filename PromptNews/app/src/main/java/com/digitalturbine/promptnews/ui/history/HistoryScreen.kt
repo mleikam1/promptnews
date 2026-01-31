@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.digitalturbine.promptnews.data.history.HistoryEntry
 import com.digitalturbine.promptnews.data.history.HistoryRepository
-import com.digitalturbine.promptnews.ui.PromptNewsTopBar
 import com.digitalturbine.promptnews.util.TimeLabelFormatter
 
 @Composable
@@ -46,10 +45,6 @@ fun HistoryScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PromptNewsTopBar(
-            showBack = false,
-            onBack = {}
-        )
         if (entries.isEmpty()) {
             Box(
                 modifier = Modifier

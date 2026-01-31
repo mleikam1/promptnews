@@ -29,6 +29,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.digitalturbine.promptnews.ui.home.HomeFragmentHost
 import com.digitalturbine.promptnews.ui.history.HistoryScreen
+import com.digitalturbine.promptnews.ui.PromptNewsHeaderBar
 import com.digitalturbine.promptnews.ui.search.CenteredLoadingStateView
 import com.digitalturbine.promptnews.ui.search.SearchScreen
 import com.digitalturbine.promptnews.ui.search.SearchScreenState
@@ -63,10 +64,21 @@ class MainActivity : FragmentActivity() {
                         .collect { isGraphReady = it }
                 }
 
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = navBackStackEntry?.destination?.route
+                val isContentRoute = currentRoute?.startsWith("content_") == true ||
+                    currentRoute?.startsWith("article_") == true
+
                 Scaffold(
+                    topBar = {
+                        PromptNewsHeaderBar(
+                            showBack = isContentRoute,
+                            onBackClick = { navController.popBackStack() },
+                            onProfileClick = {}
+                        )
+                    },
                     bottomBar = {
                         NavigationBar {
-                            val navBackStackEntry by navController.currentBackStackEntryAsState()
                             val currentDestination = navBackStackEntry?.destination
                             items.forEach { dest ->
                                 NavigationBarItem(
@@ -141,9 +153,7 @@ class MainActivity : FragmentActivity() {
                                 }
                                 SearchResultsRoute.Sports -> {
                                     SportsScreen(
-                                        query = query,
-                                        showBack = true,
-                                        onBack = { navController.popBackStack() }
+                                        query = query
                                     )
                                 }
                                 SearchResultsRoute.News -> {
@@ -163,7 +173,7 @@ class MainActivity : FragmentActivity() {
                             HomeFragmentHost()
                         }
                         composable(Dest.Sports.route) {
-                            SportsScreen(query = "Live scores", showBack = false, onBack = {})
+                            SportsScreen(query = "Live scores")
                         }
                         composable(Dest.History.route) {
                             HistoryScreen(onEntrySelected = { entry ->
