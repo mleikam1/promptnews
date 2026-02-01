@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import com.digitalturbine.promptnews.data.Article
@@ -80,10 +81,17 @@ fun SearchScreen(
     screenState: SearchScreenState,
     allowFotoscapesFallback: Boolean = true,
     recordInitialQueryInHistory: Boolean = true,
+    navController: NavController,
     onSearchRequested: (String) -> Unit,
-    onBack: () -> Unit,
-    vm: SearchViewModel = viewModel(factory = AppGraph.searchViewModelFactory)
+    onBack: () -> Unit
 ) {
+    val navBackStackEntry = remember {
+        navController.getBackStackEntry("tab_search")
+    }
+    val vm: SearchViewModel = viewModel(
+        navBackStackEntry,
+        factory = AppGraph.searchViewModelFactory
+    )
     val ui by vm.ui.collectAsState()
     val ctx = LocalContext.current
     val historyRepository = remember(ctx) { HistoryRepository.getInstance(ctx) }

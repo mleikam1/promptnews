@@ -46,6 +46,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.digitalturbine.promptnews.R
 import com.digitalturbine.promptnews.data.UserLocation
 import com.digitalturbine.promptnews.di.AppGraph
@@ -60,7 +61,14 @@ import java.util.Calendar
 import java.util.Locale
 
 @Composable
-fun HomeScreen(viewModel: HomeViewModel = viewModel(factory = AppGraph.homeViewModelFactory)) {
+fun HomeScreen(navController: NavController) {
+    val navBackStackEntry = remember {
+        navController.getBackStackEntry("tab_home")
+    }
+    val viewModel: HomeViewModel = viewModel(
+        navBackStackEntry,
+        factory = AppGraph.homeViewModelFactory
+    )
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var userLocation by remember { mutableStateOf(HomePrefs.getUserLocation(context)) }
