@@ -6,8 +6,9 @@ import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.SearchRepository
 import com.digitalturbine.promptnews.data.cache.CachedSearchResult
 import com.digitalturbine.promptnews.data.cache.SearchCache
-import com.digitalturbine.promptnews.data.serpapi.SerpApiImageService
 import com.digitalturbine.promptnews.data.serpapi.SerpApiRepository
+import com.digitalturbine.promptnews.data.serpapi.SerpApiService
+import com.digitalturbine.promptnews.ui.home.HomeViewModelFactory
 import com.digitalturbine.promptnews.ui.search.SearchViewModelFactory
 
 object AppGraph {
@@ -24,8 +25,8 @@ object AppGraph {
         return requireNotNull(app) { "AppGraph.init(application) must be called first." }
     }
 
-    val serpApiImageService: SerpApiImageService by lazy {
-        SerpApiImageService()
+    val serpApiService: SerpApiService by lazy {
+        SerpApiService()
     }
 
     val searchRepository: SearchRepository by lazy {
@@ -42,6 +43,10 @@ object AppGraph {
 
     val searchViewModelFactory: SearchViewModelFactory by lazy {
         SearchViewModelFactory(requireApp(), searchRepository)
+    }
+
+    val homeViewModelFactory: HomeViewModelFactory by lazy {
+        HomeViewModelFactory(requireApp(), serpApiRepository)
     }
 }
 

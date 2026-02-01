@@ -75,7 +75,7 @@ import com.digitalturbine.promptnews.web.ArticleWebViewActivity
 @Composable
 fun SportsScreen(
     query: String?,
-    vm: SportsViewModel = viewModel(),
+    vm: SportsViewModel = viewModel(factory = SportsViewModelFactory()),
     onMatchSelected: (SportsMatchModel) -> Unit = {},
     onHighlightSelected: (HighlightModel) -> Unit = {}
 ) {
