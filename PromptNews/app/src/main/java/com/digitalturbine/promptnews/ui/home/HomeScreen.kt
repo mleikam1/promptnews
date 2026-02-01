@@ -48,6 +48,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.digitalturbine.promptnews.R
 import com.digitalturbine.promptnews.data.UserLocation
+import com.digitalturbine.promptnews.di.AppGraph
 import com.digitalturbine.promptnews.ui.components.HeroCard
 import com.digitalturbine.promptnews.ui.components.RowCard
 import com.digitalturbine.promptnews.util.HomePrefs
@@ -59,7 +60,7 @@ import java.util.Calendar
 import java.util.Locale
 
 @Composable
-fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
+fun HomeScreen(viewModel: HomeViewModel = viewModel(factory = AppGraph.homeViewModelFactory)) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var userLocation by remember { mutableStateOf(HomePrefs.getUserLocation(context)) }
