@@ -130,6 +130,7 @@ class MainActivity : FragmentActivity() {
                             SearchScreen(
                                 initialQuery = backStackEntry.arguments?.getString("query"),
                                 screenState = SearchScreenState.Prompt,
+                                navController = navController,
                                 onSearchRequested = { query ->
                                     // Push results onto the back stack so back returns to prompt.
                                     navController.navigate(Dest.SearchResults.routeFor(query))
@@ -175,6 +176,7 @@ class MainActivity : FragmentActivity() {
                                         screenState = SearchScreenState.Results,
                                         allowFotoscapesFallback = !serpOnly,
                                         recordInitialQueryInHistory = !serpOnly,
+                                        navController = navController,
                                         onSearchRequested = { newQuery ->
                                             // Each follow-up prompt creates its own results entry.
                                             navController.navigate(Dest.SearchResults.routeFor(newQuery))
@@ -185,7 +187,7 @@ class MainActivity : FragmentActivity() {
                             }
                         }
                         composable(Dest.Home.route) {
-                            HomeFragmentHost()
+                            HomeFragmentHost(navController)
                         }
                         composable(Dest.Sports.route) {
                             SportsScreen(query = "Live scores")
