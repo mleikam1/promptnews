@@ -34,6 +34,7 @@ import com.digitalturbine.promptnews.ui.home.HomeFragmentHost
 import com.digitalturbine.promptnews.ui.history.HistoryScreen
 import com.digitalturbine.promptnews.ui.PromptNewsHeaderBar
 import com.digitalturbine.promptnews.ui.search.CenteredLoadingStateView
+import com.digitalturbine.promptnews.ui.search.PromptScreen
 import com.digitalturbine.promptnews.ui.search.SearchScreen
 import com.digitalturbine.promptnews.ui.search.SearchScreenState
 import com.digitalturbine.promptnews.ui.sports.SportsScreen
@@ -58,14 +59,14 @@ class MainActivity : FragmentActivity() {
         setContent {
             MaterialTheme {
                 val navController = rememberNavController()
-                val items = listOf(Dest.Home, Dest.Search, Dest.History)
+                val items = listOf(Dest.Home, Dest.Prompt, Dest.History)
                 var isGraphReady by remember { mutableStateOf(false) }
                 val interestTracker = remember { InterestTracker.getInstance(applicationContext) }
 
                 // The crash happens when navigate() calls findStartDestination() while the graph
                 // is still empty. Track readiness so we never navigate until nodes exist.
                 LaunchedEffect(navController) {
-                    Log.d("Nav", "startDestination=${Dest.Search.route}")
+                    Log.d("Nav", "startDestination=${Dest.Prompt.route}")
                     snapshotFlow { navController.graph }
                         .map { graph -> graph.nodes.size() > 0 }
                         .distinctUntilChanged()
@@ -104,6 +105,16 @@ class MainActivity : FragmentActivity() {
                                         if (currentDestination?.route?.startsWith(dest.route) == true) {
                                             return@NavigationBarItem
                                         }
+                                        if (dest == Dest.Prompt) {
+                                            navController.navigate("prompt") {
+                                                popUpTo("prompt") {
+                                                    inclusive = false
+                                                }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                            return@NavigationBarItem
+                                        }
                                         // Keep the existing back stack intact when switching tabs.
                                         if (!navController.popBackStack(dest.route, inclusive = false)) {
                                             navController.navigate(dest.route) { launchSingleTop = true }
@@ -118,25 +129,11 @@ class MainActivity : FragmentActivity() {
                 ) { pad ->
                     NavHost(
                         navController = navController,
-                        startDestination = Dest.Search.route,
+                        startDestination = Dest.Prompt.route,
                         modifier = Modifier.padding(pad)
                     ) {
-                        composable(
-                            route = "${Dest.Search.route}?query={query}",
-                            arguments = listOf(
-                                navArgument("query") { defaultValue = "" }
-                            )
-                        ) { backStackEntry ->
-                            SearchScreen(
-                                initialQuery = backStackEntry.arguments?.getString("query"),
-                                screenState = SearchScreenState.Prompt,
-                                navController = navController,
-                                onSearchRequested = { query ->
-                                    // Push results onto the back stack so back returns to prompt.
-                                    navController.navigate(Dest.SearchResults.routeFor(query))
-                                },
-                                onBack = { navController.popBackStack() }
-                            )
+                        composable("prompt") {
+                            PromptScreen(navController = navController)
                         }
                         composable(
                             route = "${Dest.SearchResults.route}?query={query}&serpOnly={serpOnly}",
@@ -242,11 +239,11 @@ class MainActivity : FragmentActivity() {
 }
 
 private sealed class Dest(val route: String, val label: String, val icon: ImageVector) {
-    data object Search : Dest("tab_search", "Prompt", Icons.Filled.Edit)
+    data object Prompt : Dest("prompt", "Prompt", Icons.Filled.Edit)
     data object Home : Dest("tab_home", "Home", Icons.Filled.Home)
     data object Sports : Dest("tab_sports", "Sports", Icons.Filled.SportsSoccer)
-    data object History : Dest("tab_history", "History", Icons.Filled.History)
-    data object SearchResults : Dest("tab_search_results", "Results", Icons.Filled.Edit) {
+    data object History : Dest("history", "History", Icons.Filled.History)
+    data object SearchResults : Dest("search", "Results", Icons.Filled.Edit) {
         fun routeFor(query: String, serpOnly: Boolean = false): String {
             return "$route?query=${Uri.encode(query)}&serpOnly=$serpOnly"
         }

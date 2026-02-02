@@ -31,6 +31,12 @@ class SearchViewModel(
     private var page = 0
     private var loadMoreJob: Job? = null
 
+    fun resetToTrending() {
+        currentQuery = ""
+        page = 0
+        _ui.value = SearchUi.Idle
+    }
+
     fun runSearch(query: String, screenName: String = "Prompt", allowFotoscapesFallback: Boolean = true) {
         val q = query.trim()
         if (q.isEmpty()) return

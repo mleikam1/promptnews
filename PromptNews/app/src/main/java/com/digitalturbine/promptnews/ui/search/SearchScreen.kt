@@ -82,13 +82,14 @@ fun SearchScreen(
     allowFotoscapesFallback: Boolean = true,
     recordInitialQueryInHistory: Boolean = true,
     navController: NavController,
+    searchViewModel: SearchViewModel? = null,
     onSearchRequested: (String) -> Unit,
     onBack: () -> Unit
 ) {
     val navBackStackEntry = remember {
-        navController.getBackStackEntry("tab_search")
+        navController.getBackStackEntry("prompt")
     }
-    val vm: SearchViewModel = viewModel(
+    val vm: SearchViewModel = searchViewModel ?: viewModel(
         navBackStackEntry,
         factory = AppGraph.searchViewModelFactory
     )
