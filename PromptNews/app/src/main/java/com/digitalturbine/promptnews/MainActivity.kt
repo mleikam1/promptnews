@@ -30,6 +30,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.digitalturbine.promptnews.di.AppGraph
+import com.digitalturbine.promptnews.ui.home.HOME_ENTER_SIGNAL_KEY
 import com.digitalturbine.promptnews.ui.home.HomeFragmentHost
 import com.digitalturbine.promptnews.ui.history.HistoryScreen
 import com.digitalturbine.promptnews.ui.PromptNewsHeaderBar
@@ -101,6 +102,10 @@ class MainActivity : FragmentActivity() {
                                         )
                                         if (!isGraphReady) {
                                             return@NavigationBarItem
+                                        }
+                                        if (dest == Dest.Home) {
+                                            navController.getBackStackEntry(Dest.Home.route)
+                                                .savedStateHandle[HOME_ENTER_SIGNAL_KEY] = System.currentTimeMillis()
                                         }
                                         if (currentDestination?.route?.startsWith(dest.route) == true) {
                                             return@NavigationBarItem
