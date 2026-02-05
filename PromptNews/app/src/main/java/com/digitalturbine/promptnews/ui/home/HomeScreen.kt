@@ -4,9 +4,11 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.location.LocationManager
-import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,9 +26,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -42,8 +44,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -60,6 +60,8 @@ import kotlinx.coroutines.withContext
 import java.util.Calendar
 import java.util.Locale
 
+const val HOME_ENTER_SIGNAL_KEY = "home_enter_signal"
+
 @Composable
 fun HomeScreen(navController: NavController) {
     val navBackStackEntry = remember {
@@ -73,11 +75,15 @@ fun HomeScreen(navController: NavController) {
     val scope = rememberCoroutineScope()
     var userLocation by remember { mutableStateOf(HomePrefs.getUserLocation(context)) }
     var userName by remember { mutableStateOf(HomePrefs.getUserName(context)) }
-    val localNewsItems by viewModel.localNewsItems.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val localNewsState by viewModel.localNewsState.collectAsState()
     val isLoadingMore by viewModel.isLoadingMore.collectAsState()
-    val hasFetched by viewModel.hasFetched.collectAsState()
     val hasMore by viewModel.hasMore.collectAsState()
+    val homeEnterSignal by navBackStackEntry.savedStateHandle
+        .getStateFlow(HOME_ENTER_SIGNAL_KEY, 0L)
+        .collectAsState()
+
+    val localNewsItems = (localNewsState as? LocalNewsState.Data)?.articles.orEmpty()
+
     var permissionDenied by remember { mutableStateOf(false) }
     var showNamePrompt by remember { mutableStateOf(!HomePrefs.hasSeenNamePrompt(context)) }
     var nameInput by remember { mutableStateOf(userName.orEmpty()) }
@@ -91,7 +97,7 @@ fun HomeScreen(navController: NavController) {
             if (resolvedLocation != null) {
                 HomePrefs.setUserLocation(context, resolvedLocation)
                 userLocation = resolvedLocation
-                viewModel.fetchLocalNews(resolvedLocation.city, resolvedLocation.state)
+                viewModel.onHomeEntered(resolvedLocation)
             }
         }
     }
@@ -153,6 +159,12 @@ fun HomeScreen(navController: NavController) {
             else -> {
                 permissionDenied = true
             }
+        }
+    }
+
+    LaunchedEffect(homeEnterSignal) {
+        if (homeEnterSignal > 0L) {
+            userLocation?.let { viewModel.onHomeEntered(it) }
         }
     }
 
@@ -239,15 +251,15 @@ fun HomeScreen(navController: NavController) {
                     )
                 }
             } else {
-                when {
-                    isLoading -> {
+                when (val uiState = localNewsState) {
+                    LocalNewsState.Loading -> {
                         item {
                             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator()
                             }
                         }
                     }
-                    hasFetched && localNewsItems.isEmpty() -> {
+                    LocalNewsState.EmptyHardFail -> {
                         item {
                             Text(
                                 text = stringResource(R.string.home_no_local_stories),
@@ -255,8 +267,8 @@ fun HomeScreen(navController: NavController) {
                             )
                         }
                     }
-                    else -> {
-                        val hero = localNewsItems.firstOrNull()
+                    is LocalNewsState.Data -> {
+                        val hero = uiState.articles.firstOrNull()
                         if (hero != null) {
                             item {
                                 HeroCard(hero) {
@@ -267,7 +279,7 @@ fun HomeScreen(navController: NavController) {
                                 }
                             }
                         }
-                        items(localNewsItems.drop(1)) { article ->
+                        items(uiState.articles.drop(1)) { article ->
                             RowCard(article) {
                                 context.startActivity(
                                     Intent(context, ArticleWebViewActivity::class.java)
@@ -278,18 +290,12 @@ fun HomeScreen(navController: NavController) {
                         }
                     }
                 }
-                val location = userLocation
-                if (
-                    location != null &&
-                    hasMore &&
-                    localNewsItems.isNotEmpty()
-                ) {
+
+                if (hasMore && localNewsItems.isNotEmpty()) {
                     item {
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             OutlinedButton(
-                                onClick = {
-                                    viewModel.loadMoreLocalNews(location)
-                                },
+                                onClick = { viewModel.loadMoreLocalNews() },
                                 enabled = !isLoadingMore
                             ) {
                                 if (isLoadingMore) {

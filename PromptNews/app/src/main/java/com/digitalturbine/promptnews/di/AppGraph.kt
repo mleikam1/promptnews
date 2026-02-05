@@ -6,7 +6,7 @@ import com.digitalturbine.promptnews.data.Article
 import com.digitalturbine.promptnews.data.SearchRepository
 import com.digitalturbine.promptnews.data.cache.CachedSearchResult
 import com.digitalturbine.promptnews.data.cache.SearchCache
-import com.digitalturbine.promptnews.data.serpapi.SerpApiRepository
+import com.digitalturbine.promptnews.data.localnews.LocalNewsRepository
 import com.digitalturbine.promptnews.data.serpapi.SerpApiService
 import com.digitalturbine.promptnews.ui.home.HomeViewModelFactory
 import com.digitalturbine.promptnews.ui.search.SearchViewModelFactory
@@ -33,8 +33,8 @@ object AppGraph {
         SearchRepository()
     }
 
-    val serpApiRepository: SerpApiRepository by lazy {
-        SerpApiRepository(searchRepository)
+    val localNewsRepository: LocalNewsRepository by lazy {
+        LocalNewsRepository(requireApp(), searchRepository)
     }
 
     val searchCacheStore: SearchCacheStore by lazy {
@@ -46,7 +46,7 @@ object AppGraph {
     }
 
     val homeViewModelFactory: HomeViewModelFactory by lazy {
-        HomeViewModelFactory(requireApp(), serpApiRepository)
+        HomeViewModelFactory(requireApp(), localNewsRepository)
     }
 }
 
