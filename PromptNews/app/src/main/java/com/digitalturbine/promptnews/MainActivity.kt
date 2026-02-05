@@ -27,10 +27,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.digitalturbine.promptnews.di.AppGraph
-import com.digitalturbine.promptnews.ui.home.HOME_ENTER_SIGNAL_KEY
 import com.digitalturbine.promptnews.ui.home.HomeFragmentHost
 import com.digitalturbine.promptnews.ui.history.HistoryScreen
 import com.digitalturbine.promptnews.ui.PromptNewsHeaderBar
@@ -103,27 +103,10 @@ class MainActivity : FragmentActivity() {
                                         if (!isGraphReady) {
                                             return@NavigationBarItem
                                         }
-                                        if (dest == Dest.Home) {
-                                            navController.getBackStackEntry(Dest.Home.route)
-                                                .savedStateHandle[HOME_ENTER_SIGNAL_KEY] = System.currentTimeMillis()
-                                        }
                                         if (currentDestination?.route?.startsWith(dest.route) == true) {
                                             return@NavigationBarItem
                                         }
-                                        if (dest == Dest.Prompt) {
-                                            navController.navigate("prompt") {
-                                                popUpTo("prompt") {
-                                                    inclusive = false
-                                                }
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
-                                            return@NavigationBarItem
-                                        }
-                                        // Keep the existing back stack intact when switching tabs.
-                                        if (!navController.popBackStack(dest.route, inclusive = false)) {
-                                            navController.navigate(dest.route) { launchSingleTop = true }
-                                        }
+                                        navController.safeNavigate(dest.route)
                                     },
                                     icon = { Icon(dest.icon, contentDescription = dest.label) },
                                     label = { Text(dest.label) }
@@ -240,6 +223,16 @@ class MainActivity : FragmentActivity() {
         lifecycleScope.launch {
             historyRepository.pruneOldEntries()
         }
+    }
+}
+
+private fun NavController.safeNavigate(route: String) {
+    navigate(route) {
+        popUpTo(graph.startDestinationId) {
+            saveState = true
+        }
+        launchSingleTop = true
+        restoreState = true
     }
 }
 
