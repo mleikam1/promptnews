@@ -91,7 +91,7 @@ class MainActivity : FragmentActivity() {
                         NavigationBar {
                             items.forEach { dest ->
                                 NavigationBarItem(
-                                    selected = currentRoute?.startsWith(dest.route) == true,
+                                    selected = currentRoute == dest.route,
                                     enabled = isGraphReady,
                                     onClick = {
                                         Log.d(
@@ -102,10 +102,23 @@ class MainActivity : FragmentActivity() {
                                         if (!isGraphReady) {
                                             return@NavigationBarItem
                                         }
-                                        if (currentRoute?.startsWith(dest.route) == true) {
-                                            return@NavigationBarItem
+                                        when (dest) {
+                                            Dest.Prompt -> {
+                                                navController.navigate(Dest.Prompt.route) {
+                                                    popUpTo(navController.graph.startDestinationId) {
+                                                        inclusive = true
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = false
+                                                }
+                                            }
+                                            else -> {
+                                                if (currentRoute == dest.route) {
+                                                    return@NavigationBarItem
+                                                }
+                                                navController.navigateTopLevel(dest.route)
+                                            }
                                         }
-                                        navController.navigateTopLevel(dest.route)
                                     },
                                     icon = { Icon(dest.icon, contentDescription = dest.label) },
                                     label = { Text(dest.label) }
