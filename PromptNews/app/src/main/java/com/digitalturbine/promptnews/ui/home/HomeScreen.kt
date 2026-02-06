@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.digitalturbine.promptnews.R
 import com.digitalturbine.promptnews.data.UserLocation
 import com.digitalturbine.promptnews.di.AppGraph
@@ -64,13 +65,8 @@ const val HOME_ENTER_SIGNAL_KEY = "home_enter_signal"
 
 @Composable
 fun HomeScreen(navController: NavController) {
-    val navBackStackEntry = remember {
-        navController.getBackStackEntry("tab_home")
-    }
-    val viewModel: HomeViewModel = viewModel(
-        navBackStackEntry,
-        factory = AppGraph.homeViewModelFactory
-    )
+    val navBackStackEntry = navController.currentBackStackEntryAsState().value
+    val viewModel: HomeViewModel = viewModel(factory = AppGraph.homeViewModelFactory)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var userLocation by remember { mutableStateOf(HomePrefs.getUserLocation(context)) }
@@ -78,9 +74,10 @@ fun HomeScreen(navController: NavController) {
     val localNewsState by viewModel.localNewsState.collectAsState()
     val isLoadingMore by viewModel.isLoadingMore.collectAsState()
     val hasMore by viewModel.hasMore.collectAsState()
-    val homeEnterSignal by navBackStackEntry.savedStateHandle
-        .getStateFlow(HOME_ENTER_SIGNAL_KEY, 0L)
-        .collectAsState()
+    val homeEnterSignal by navBackStackEntry?.savedStateHandle
+        ?.getStateFlow(HOME_ENTER_SIGNAL_KEY, 0L)
+        ?.collectAsState()
+        ?: remember { mutableStateOf(0L) }
 
     val localNewsItems = (localNewsState as? LocalNewsState.Data)?.articles.orEmpty()
 

@@ -89,10 +89,9 @@ class MainActivity : FragmentActivity() {
                     },
                     bottomBar = {
                         NavigationBar {
-                            val currentDestination = navBackStackEntry?.destination
                             items.forEach { dest ->
                                 NavigationBarItem(
-                                    selected = currentDestination?.route?.startsWith(dest.route) == true,
+                                    selected = currentRoute?.startsWith(dest.route) == true,
                                     enabled = isGraphReady,
                                     onClick = {
                                         Log.d(
@@ -103,10 +102,10 @@ class MainActivity : FragmentActivity() {
                                         if (!isGraphReady) {
                                             return@NavigationBarItem
                                         }
-                                        if (currentDestination?.route?.startsWith(dest.route) == true) {
+                                        if (currentRoute?.startsWith(dest.route) == true) {
                                             return@NavigationBarItem
                                         }
-                                        navController.safeNavigate(dest.route)
+                                        navController.navigateTopLevel(dest.route)
                                     },
                                     icon = { Icon(dest.icon, contentDescription = dest.label) },
                                     label = { Text(dest.label) }
@@ -226,7 +225,7 @@ class MainActivity : FragmentActivity() {
     }
 }
 
-private fun NavController.safeNavigate(route: String) {
+private fun NavController.navigateTopLevel(route: String) {
     navigate(route) {
         popUpTo(graph.startDestinationId) {
             saveState = true
